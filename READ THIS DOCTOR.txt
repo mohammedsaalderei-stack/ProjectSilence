@@ -4,3 +4,4 @@ Battlehub and battleHUD were created with AI assistance.
 Animations came from AI as well.
 Outside of design and animations, this is mostly our work.
 We plan of remaking these portions into something we created as well as add more features to the battle system.
+Also, this is JUST the battle system. The exploration is still being worked on so we decided to show this off only.
