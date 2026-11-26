@@ -1,5 +1,4 @@
 using UnityEngine;
-
 [RequireComponent(typeof(CharacterController))]
 public class OverworldMob : MonoBehaviour
 {
@@ -18,7 +17,6 @@ public class OverworldMob : MonoBehaviour
     [Tooltip("Lines this mob says when it notices you, before the battle (empty = it just attacks).")]
     [TextArea(2, 4)] public string[] introLines;
     bool hasSpoken;
-
     [Header("Movement (metres and metres per second)")]
     public float wanderRadius = 3f;
     public float noticeRadius = 6f;
@@ -26,7 +24,6 @@ public class OverworldMob : MonoBehaviour
     public float walkSpeed = 1.2f;
     public float chaseSpeed = 3f;
     public float touchDistance = 1.2f;
-
     Vector3 home;
     Vector3 wanderTarget;
     Vector3 lastPosition;
@@ -43,7 +40,6 @@ public class OverworldMob : MonoBehaviour
     Transform model;
     Vector3 modelRest;
     TextMesh alert;
-
     void Start()
     {
         if (GameFlow.DefeatedMobs.Contains(mobId)
@@ -53,7 +49,6 @@ public class OverworldMob : MonoBehaviour
             return;
         }
         body = GetComponent<CharacterController>();
-
         body.enabled = false;
         if (GroundFinder.Find(transform.position, Mathf.Max(6f, wanderRadius * 4f), body.radius, body.height, out Vector3 ground))
         {
@@ -79,17 +74,14 @@ public class OverworldMob : MonoBehaviour
         }
         alert = MakeAlert();
     }
-
     void Update()
     {
         if (player == null) return;
         if (GameFlow.Busy) return;
-
         Vector3 toPlayer = player.position - transform.position;
         toPlayer.y = 0f;
         float distance = toPlayer.magnitude;
         bool safe = Time.time < GameFlow.SafeUntil;
-
         if (!hasSpoken && introLines != null && introLines.Length > 0 && !safe && distance < noticeRadius
             && AdventureDirector.Instance != null)
         {
@@ -98,7 +90,6 @@ public class OverworldMob : MonoBehaviour
             AdventureDirector.Instance.NarrateThen(displayName, introLines, () => GameFlow.StartBattle(this, where));
             return;
         }
-
         if (!chasing && !safe && distance < noticeRadius)
         {
             chasing = true;
@@ -108,7 +99,6 @@ public class OverworldMob : MonoBehaviour
         }
         if (chasing && (distance > giveUpRadius || Vector3.Distance(transform.position, home) > giveUpRadius)) chasing = false;
         alert.gameObject.SetActive(chasing);
-
         Vector3 goal;
         float speed;
         if (chasing)
@@ -127,12 +117,10 @@ public class OverworldMob : MonoBehaviour
             goal = wanderTarget;
             speed = walkSpeed;
         }
-
         Vector3 move = goal - transform.position;
         move.y = 0f;
         bool moving = move.magnitude > 0.25f;
         Vector3 direction = moving ? move.normalized : Vector3.zero;
-
         if (moving)
         {
             stuckTime += Time.deltaTime;
@@ -160,7 +148,6 @@ public class OverworldMob : MonoBehaviour
             lastPosition = transform.position;
         }
         if (moving) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime * 8f);
-
         verticalSpeed = body.isGrounded ? -2f : verticalSpeed - 20f * Time.deltaTime;
         body.Move((direction * speed + Vector3.up * verticalSpeed) * Time.deltaTime);
         if (transform.position.y < home.y - 6f)
@@ -171,20 +158,16 @@ public class OverworldMob : MonoBehaviour
             verticalSpeed = 0f;
             chasing = false;
         }
-
         if (model != null)
             model.localPosition = modelRest + Vector3.up * (moving ? Mathf.Abs(Mathf.Sin(Time.time * (4f + speed * 2f))) * 0.12f : 0f);
-
         if (!safe && distance < touchDistance) GameFlow.StartBattle(this, player.position);
     }
-
     void LateUpdate()
     {
         if (Camera.main == null) return;
         if (alert != null) alert.transform.rotation = Camera.main.transform.rotation;
         if (model != null && model.GetComponent<SpriteRenderer>() != null) model.rotation = Camera.main.transform.rotation;
     }
-
     TextMesh MakeAlert()
     {
         var go = new GameObject("Alert !");
@@ -201,7 +184,6 @@ public class OverworldMob : MonoBehaviour
         go.SetActive(false);
         return text;
     }
-
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;

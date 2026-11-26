@@ -2,17 +2,14 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-
 public static class GameFlow
 {
     public const string BattleScene = "Battle";
     public const string MenuScene = "_Menu";
-
     public struct HeroState
     {
         public int hp, maxHp, mp, maxMp;
     }
-
     public static readonly Dictionary<string, HeroState> Party = new Dictionary<string, HeroState>();
     public static readonly HashSet<string> DefeatedMobs = new HashSet<string>();
     public static bool BossDefeated;
@@ -22,7 +19,6 @@ public static class GameFlow
     public static bool FinalDefeated;
     public static bool ValeRevealShown;
     public static bool Busy;
-
     public static bool InBattleFromMap;
     public static string PendingMobId;
     public static string PendingMobName;
@@ -32,11 +28,9 @@ public static class GameFlow
     public static string ReturnScene;
     public static Vector3 ReturnPosition;
     public static bool LastBattleWon;
-
     public static bool PlaceAtReturnPosition;
     public static string MessageOnReturn;
     public static float SafeUntil;
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     public static void NewGame()
     {
@@ -60,7 +54,6 @@ public static class GameFlow
         MessageOnReturn = null;
         SafeUntil = 0f;
     }
-
     public static void StartBattle(OverworldMob mob, Vector3 playerPosition)
     {
         if (Busy) return;
@@ -76,11 +69,9 @@ public static class GameFlow
         ReturnPosition = playerPosition;
         GameAudio.PauseSong();
         GameAudio.Play(GameSounds.Slots.battleStart);
-
         if (AdventureDirector.Instance != null) AdventureDirector.Instance.FlashThenLoad(BattleScene);
         else SceneManager.LoadScene(BattleScene);
     }
-
     public static void ApplyToBattle(List<Unit> party, List<Unit> enemies)
     {
         foreach (Unit hero in party)
@@ -89,7 +80,6 @@ public static class GameFlow
             hero.currentHP = Mathf.Clamp(saved.hp, 1, hero.maxHP);
             hero.currentMP = Mathf.Clamp(saved.mp, 0, hero.maxMP);
         }
-
         if (!InBattleFromMap) return;
         if (PendingIsBoss && !PendingIsFinal)
         {
@@ -112,7 +102,6 @@ public static class GameFlow
             }
         }
     }
-
     public static void SaveParty(List<Unit> party, bool won)
     {
         LastBattleWon = won;
@@ -127,7 +116,6 @@ public static class GameFlow
             };
         }
     }
-
     public static void EndBattle()
     {
         InBattleFromMap = false;
@@ -149,7 +137,6 @@ public static class GameFlow
         RealmTravel.NextSpawn = null;
         SceneManager.LoadScene(string.IsNullOrEmpty(ReturnScene) ? MenuScene : ReturnScene);
     }
-
     public static void HealParty()
     {
         foreach (string name in Party.Keys.ToList())
@@ -160,7 +147,6 @@ public static class GameFlow
             Party[name] = s;
         }
     }
-
     public static string PartySummary()
     {
         if (Party.Count == 0) return "Party: Maestro, Harmony, Forte and Lyra, ready";

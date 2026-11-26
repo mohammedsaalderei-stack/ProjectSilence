@@ -1,5 +1,4 @@
 using UnityEngine;
-
 [DefaultExecutionOrder(-500)]
 public sealed class RealmPlayerSpawn : MonoBehaviour
 {

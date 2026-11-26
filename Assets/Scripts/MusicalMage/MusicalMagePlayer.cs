@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-
 [RequireComponent(typeof(CharacterController))]
 public sealed class MusicalMagePlayer : MonoBehaviour
 {
@@ -28,7 +27,6 @@ public sealed class MusicalMagePlayer : MonoBehaviour
     float externalUntil=-1;
     static readonly int Direction=Animator.StringToHash("Direction");
     static readonly int Sprint=Animator.StringToHash("Sprint");
-
     void Awake()
     {
         capsule=GetComponent<CharacterController>();
@@ -70,10 +68,8 @@ public sealed class MusicalMagePlayer : MonoBehaviour
     }
     void LateUpdate()
     {
-        // A camera-facing 2D sprite with a separate upright 3D capsule for collisions.
         if(movementCamera!=null&&spriteRenderer!=null)spriteRenderer.transform.rotation=movementCamera.transform.rotation;
     }
-    // A short-lived input hook for scripted control and editor verification.
     public void DriveForSeconds(Vector2 direction,bool sprint,float seconds)
     {externalInput=Vector2.ClampMagnitude(direction,1);externalSprint=sprint;externalUntil=Time.time+Mathf.Max(0,seconds);}
 }

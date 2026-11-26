@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-
 public static class RealmTravel
 {
     public static string NextSpawn;

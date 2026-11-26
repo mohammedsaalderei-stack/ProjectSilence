@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-
 [RequireComponent(typeof(Button))]
 public sealed class MenuButtonFeedback : MonoBehaviour,IPointerEnterHandler,ISelectHandler
 {

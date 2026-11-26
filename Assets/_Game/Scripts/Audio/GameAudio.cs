@@ -1,5 +1,4 @@
 using UnityEngine;
-
 public static class GameAudio
 {
     public static float MusicVolume
@@ -10,16 +9,13 @@ public static class GameAudio
             return songs != null ? songs.volume : 0.35f;
         }
     }
-
     public static float SfxVolume => GameSounds.Slots.volume;
-
     static AudioSource[] pool;
     static int next;
     static AudioSource song, once;
     static AudioLowPassFilter muffle;
     static AudioClip wantedSong;
     static float wantedCutoff = 22000f;
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -31,8 +27,6 @@ public static class GameAudio
         wantedSong = null;
         wantedCutoff = 22000f;
     }
-
-
     public static void Play(AudioClip clip, float volume = 1f, float pitch = 1f)
     {
         if (clip == null) return;
@@ -53,8 +47,6 @@ public static class GameAudio
         source.pitch = pitch;
         source.PlayOneShot(clip, volume * SfxVolume);
     }
-
-
     public static void PlaySong(AudioClip clip, bool muffled = false)
     {
         MakeMusicPlayers();
@@ -67,12 +59,10 @@ public static class GameAudio
             if (!song.isPlaying) song.Play();
         }
     }
-
     public static void PauseSong()
     {
         if (song != null) song.Pause();
     }
-
     public static void UseMenuSong(AudioClip clip)
     {
         GameObject menuAudio = GameObject.Find("Menu Audio");
@@ -82,7 +72,6 @@ public static class GameAudio
         source.clip = clip;
         if (clip != null) source.Play();
     }
-
     public static void PlayOnce(AudioClip clip)
     {
         if (clip == null) return;
@@ -92,7 +81,6 @@ public static class GameAudio
         once.volume = MusicVolume;
         once.Play();
     }
-
     static void MakeMusicPlayers()
     {
         if (song != null) return;
@@ -104,17 +92,14 @@ public static class GameAudio
         song.ignoreListenerPause = true;
         muffle = go.AddComponent<AudioLowPassFilter>();
         muffle.cutoffFrequency = 22000f;
-
         var onceObject = new GameObject("Play Once");
         onceObject.transform.SetParent(go.transform);
         once = onceObject.AddComponent<AudioSource>();
         once.loop = false;
         once.playOnAwake = false;
         once.ignoreListenerPause = true;
-
         go.AddComponent<MusicFader>();
     }
-
     class MusicFader : MonoBehaviour
     {
         void Update()

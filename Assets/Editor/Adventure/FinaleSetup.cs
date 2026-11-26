@@ -6,7 +6,6 @@ using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
-
 public static class FinaleSetup
 {
     const string Models = "Assets/_Game/Characters/Models/";
@@ -15,13 +14,11 @@ public static class FinaleSetup
     const string Materials = "Assets/_Game/Characters/Materials/";
     const string BattleScene = "Assets/_Game/Scenes/Battle.unity";
     const int TextureSize = 1024;
-
     class Spec
     {
         public string idle, attack, cast;
         public float idleSpeed = 1f;
     }
-
     static readonly Dictionary<string, Spec> Specs = new Dictionary<string, Spec>
     {
         { "Maestro", new Spec { idle = "Attack", idleSpeed = 0f, attack = "Attack", cast = "Attack" } },
@@ -32,7 +29,6 @@ public static class FinaleSetup
         { "StoneGolem", new Spec { idle = "Charged_Ground_Slam", idleSpeed = 0f, attack = "Charged_Ground_Slam", cast = "Charged_Ground_Slam" } },
         { "CrystalWolf", new Spec { idle = "wolf_idle_fight", attack = "wolf_jump_start", cast = "wolf_jump_start" } },
     };
-
     [MenuItem("Silence/Set Up Party and Finale")]
     public static void SetUp()
     {
@@ -41,31 +37,25 @@ public static class FinaleSetup
         Directory.CreateDirectory(Materials);
         foreach (var pair in Specs) MakeController(pair.Key, pair.Value);
         AssetDatabase.SaveAssets();
-
         var scene = EditorSceneManager.OpenScene(BattleScene);
         BattleManager battle = Object.FindAnyObjectByType<BattleManager>(FindObjectsInactive.Include);
         List<Unit> all = Object.FindObjectsByType<Unit>(FindObjectsInactive.Include).ToList();
-
         Unit maestro = all.First(u => u.isPlayer && u.unitName == "Maestro");
         Unit harmony = all.First(u => u.isPlayer && u.unitName == "Harmony");
         Unit forte = all.FirstOrDefault(u => u.isPlayer && u.unitName == "Forte") ?? Clone(harmony, "Forte");
         Unit lyra = all.FirstOrDefault(u => u.isPlayer && u.unitName == "Lyra") ?? Clone(harmony, "Lyra");
-
         Hero(maestro, "Maestro", new Vector3(-2.3f, 0f, 3.4f), 100, 40, 14, 7, 13, 12, new Color(1f, 0.8f, 0.3f), true);
         Hero(harmony, "Harmony", new Vector3(-4.6f, 0f, -0.6f), 90, 60, 9, 6, 10, 16, new Color(0.55f, 0.85f, 1f), true);
         Hero(forte, "Forte", new Vector3(-2.2f, 0f, 0.4f), 160, 10, 17, 12, 7, 5, new Color(1f, 0.55f, 0.35f), true);
         Hero(lyra, "Lyra", new Vector3(-4.9f, 0f, 2.6f), 95, 25, 15, 5, 15, 10, new Color(0.7f, 1f, 0.6f), false);
         battle.party = new List<Unit> { forte, maestro, harmony, lyra };
-
         Transform lyraModel = lyra.transform.Find("Lyra Model"), maestroModel = maestro.transform.Find("Maestro Model");
         if (lyraModel != null && maestroModel != null) lyraModel.rotation = Quaternion.AngleAxis(90f, Vector3.up) * maestroModel.rotation;
-
         foreach (Unit enemy in all.Where(u => !u.isPlayer))
         {
             if (enemy.unitName.StartsWith("Hollow Wolf") || enemy.unitName.StartsWith("Hushed Wolf")) SwapModel(enemy, "CrystalWolf");
             else if (enemy.unitName.StartsWith("Mute Golem")) SwapModel(enemy, "StoneGolem");
         }
-
         GameObject golemGroup = battle.enemyGroups[1];
         GameObject finalGroup = battle.enemyGroups.Length > 2 ? battle.enemyGroups[2] : null;
         if (finalGroup == null)
@@ -97,20 +87,17 @@ public static class FinaleSetup
             EditorUtility.SetDirty(unit);
         }
         finalGroup.SetActive(false);
-
         EditorUtility.SetDirty(battle);
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         Debug.Log("FINALE setup done: party " + string.Join(", ", battle.party.Select(u => u.unitName)) + " | enemy groups " + battle.enemyGroups.Length);
     }
-
     static Unit Clone(Unit template, string name)
     {
         GameObject copy = Object.Instantiate(template.gameObject, template.transform.parent);
         copy.name = name;
         return copy.GetComponent<Unit>();
     }
-
     static void Hero(Unit unit, string name, Vector3 position, int hp, int mp, int atk, int def, int spd, int magic, Color spell, bool melee)
     {
         unit.unitName = name;
@@ -125,7 +112,6 @@ public static class FinaleSetup
         EditorUtility.SetDirty(unit);
         EditorUtility.SetDirty(motion);
     }
-
     static void SwapModel(Unit unit, string modelName, float heightScale = 1f)
     {
         Transform root = unit.transform;
@@ -157,7 +143,6 @@ public static class FinaleSetup
         UseCompressedTextures(model, modelName);
         Debug.Log("FINALE " + unit.unitName + " now uses " + modelName + " (height " + (height * heightScale).ToString("F2") + ")");
     }
-
     static void UseController(GameObject model, string modelName)
     {
         Animator animator = model.GetComponent<Animator>();
@@ -166,8 +151,6 @@ public static class FinaleSetup
         animator.applyRootMotion = false;
         EditorUtility.SetDirty(animator);
     }
-
-
     class WeaponSpec
     {
         public string file, hand;
@@ -176,7 +159,6 @@ public static class FinaleSetup
         public bool tipAtTop;
         public float spin;
     }
-
     static readonly Dictionary<string, WeaponSpec> WeaponSpecs = new Dictionary<string, WeaponSpec>
     {
         { "Maestro", new WeaponSpec { file = "Rapier", hand = "mixamorig:RightHand", length = 0.55f, grip = 0.11f, tipAtTop = false } },
@@ -185,7 +167,6 @@ public static class FinaleSetup
         { "Lyra", new WeaponSpec { file = "RecurveBow", hand = "mixamorig:LeftHand", length = 0.66f, grip = 0.5f, tipAtTop = true } },
         { "ArchcantorVale", new WeaponSpec { file = "SorcererStaff", hand = "mixamorig:RightHand", length = 0.9f, grip = 0.42f, tipAtTop = true } },
     };
-
     static void AttachWeapon(Unit unit, string modelName)
     {
         if (!WeaponSpecs.TryGetValue(modelName, out WeaponSpec spec)) return;
@@ -194,26 +175,22 @@ public static class FinaleSetup
         if (hand == null || hand.parent == null) { Debug.LogWarning("FINALE no hand bone " + spec.hand + " on " + modelName); return; }
         Transform old = hand.Find("Weapon");
         if (old != null) Object.DestroyImmediate(old.gameObject);
-
         GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Characters/Weapons/" + spec.file + ".glb");
         if (asset == null) { Debug.LogWarning("FINALE missing weapon " + spec.file); return; }
         var weapon = (GameObject)PrefabUtility.InstantiatePrefab(asset, unit.gameObject.scene);
         weapon.name = "Weapon";
         weapon.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
         weapon.transform.localScale = Vector3.one;
-
         Bounds b = Measure(weapon);
         float length = b.size.y;
         float handleEnd = spec.tipAtTop ? b.min.y : b.max.y;
         var gripLocal = new Vector3(b.center.x, handleEnd + (spec.tipAtTop ? 1f : -1f) * spec.grip * length, b.center.z);
-
         Vector3 arm = (hand.position - hand.parent.position).normalized;
         Vector3 tip = Vector3.ProjectOnPlane(model.forward, arm).normalized;
         Vector3 width = Vector3.ProjectOnPlane(arm, tip).normalized;
         Quaternion turn = Quaternion.LookRotation(Vector3.Cross(width, tip), tip);
         if (!spec.tipAtTop) turn *= Quaternion.Euler(0f, 0f, 180f);
         turn *= Quaternion.AngleAxis(spec.spin, Vector3.up);
-
         float height = Measure(model.gameObject).size.y;
         float scale = height * spec.length / Mathf.Max(0.001f, length);
         Vector3 fist = hand.position + arm * Vector3.Distance(hand.position, hand.parent.position) * 0.3f;
@@ -225,8 +202,6 @@ public static class FinaleSetup
         UseCompressedTextures(weapon, spec.file);
         Debug.Log("FINALE " + unit.unitName + " holds " + spec.file + " (" + (length * scale).ToString("F2") + " m)");
     }
-
-
     static void UseCompressedTextures(GameObject model, string fileName)
     {
         foreach (Renderer r in model.GetComponentsInChildren<Renderer>(true))
@@ -237,7 +212,6 @@ public static class FinaleSetup
             EditorUtility.SetDirty(r);
         }
     }
-
     static Material CompressedCopy(Material source, string name)
     {
         if (source == null || !AssetDatabase.GetAssetPath(source).EndsWith(".glb")) return source;
@@ -253,7 +227,6 @@ public static class FinaleSetup
         AssetDatabase.CreateAsset(copy, path);
         return copy;
     }
-
     static Texture2D SaveTexture(Texture2D source, string name)
     {
         string path = Textures + name + ".png";
@@ -285,7 +258,6 @@ public static class FinaleSetup
         }
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
-
     static Bounds Measure(GameObject go)
     {
         Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
@@ -294,14 +266,12 @@ public static class FinaleSetup
         foreach (Renderer r in renderers) b.Encapsulate(r.bounds);
         return b;
     }
-
     static void MakeController(string modelName, Spec spec)
     {
         AnimationClip[] clips = AssetDatabase.LoadAllAssetsAtPath(Models + modelName + ".glb").OfType<AnimationClip>()
             .Where(c => !c.name.StartsWith("__preview")).ToArray();
         AnimationClip Clip(string wanted) => clips.FirstOrDefault(c => c.name == wanted) ?? clips.FirstOrDefault(c => c.name.Contains(wanted));
         Debug.Log("FINALE clips in " + modelName + ": " + string.Join(", ", clips.Select(c => c.name + (c.legacy ? " (legacy!)" : "") + " " + c.length.ToString("F1") + "s")));
-
         string path = Animators + modelName + ".controller";
         AssetDatabase.DeleteAsset(path);
         AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(path);
@@ -309,7 +279,6 @@ public static class FinaleSetup
         controller.AddParameter("Cast", AnimatorControllerParameterType.Trigger);
         controller.AddParameter("Moving", AnimatorControllerParameterType.Bool);
         AnimatorStateMachine machine = controller.layers[0].stateMachine;
-
         AnimatorState idle = machine.AddState("Idle", new Vector3(300f, 0f, 0f));
         idle.motion = Clip(spec.idle);
         idle.speed = spec.idleSpeed;
@@ -320,7 +289,6 @@ public static class FinaleSetup
         attack.motion = Clip(spec.attack);
         AnimatorState cast = machine.AddState("Cast", new Vector3(550f, 60f, 0f));
         cast.motion = Clip(spec.cast);
-
         AnimatorStateTransition toRun = idle.AddTransition(run);
         toRun.AddCondition(AnimatorConditionMode.If, 0f, "Moving");
         toRun.hasExitTime = false;

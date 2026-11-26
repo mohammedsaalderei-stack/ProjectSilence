@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-
 public sealed class SimpleStartMenu : MonoBehaviour
 {
     public GameObject titleScreen;
@@ -12,7 +11,6 @@ public sealed class SimpleStartMenu : MonoBehaviour
     public Button startButton;
     public string kingdomSceneName="Kingdom";
     public bool HasStarted { get; private set; }
-
     void Awake()
     {
         HasStarted=false;
@@ -22,13 +20,11 @@ public sealed class SimpleStartMenu : MonoBehaviour
         Cursor.lockState=CursorLockMode.None;
         Cursor.visible=true;
     }
-
     void Start()
     {
         if(EventSystem.current!=null&&startButton!=null)
             EventSystem.current.SetSelectedGameObject(startButton.gameObject);
     }
-
     public void StartGame()
     {
         if(HasStarted)return;

@@ -1,17 +1,13 @@
 using System.Collections;
 using UnityEngine;
-
 public class UnitMotion : MonoBehaviour
 {
     [Tooltip("Run up to the target for a physical attack. Untick to attack from where the unit stands.")]
     public bool runToTarget = true;
-
     [Tooltip("Running speed in metres per second.")]
     public float runSpeed = 9f;
-
     [Tooltip("Space left between this unit and its target, in metres.")]
     public float gap = 0.25f;
-
     Vector3 home;
     Vector3 baseScale;
     bool prepared;
@@ -27,7 +23,6 @@ public class UnitMotion : MonoBehaviour
     Animator animator;
     Vector3 hitFrom;
     float breathOffset;
-
     public float ExtentToward(Vector3 direction)
     {
         if (!measured) Measure();
@@ -37,7 +32,6 @@ public class UnitMotion : MonoBehaviour
                     + Mathf.Abs(direction.z) * halfSize.z;
         return Mathf.Clamp(reach, 0.2f, 3f);
     }
-
     public Vector3 BodyCentre
     {
         get
@@ -46,7 +40,6 @@ public class UnitMotion : MonoBehaviour
             return transform.position + centreOffset + Vector3.up * centreHeight;
         }
     }
-
     public Vector3 HeadPoint
     {
         get
@@ -55,31 +48,25 @@ public class UnitMotion : MonoBehaviour
             return transform.position + centreOffset + Vector3.up * (centreHeight + halfSize.y);
         }
     }
-
     public void HitFrom(Vector3 position)
     {
         hitFrom = position;
     }
-
     void Start()
     {
         Prepare();
     }
-
     void Prepare()
     {
         if (prepared) return;
         prepared = true;
-
         home = transform.position;
         baseScale = transform.localScale;
         hitFrom = transform.position - transform.forward;
         breathOffset = Random.value * 10f;
-
         animator = GetComponentInChildren<Animator>();
         hasClips = animator != null && animator.runtimeAnimatorController != null;
     }
-
     void Measure()
     {
         measured = true;
@@ -112,26 +99,21 @@ public class UnitMotion : MonoBehaviour
         centreOffset = Flat(bounds.center - transform.position);
         centreHeight = bounds.center.y - transform.position.y;
     }
-
     bool IsHeldWeapon(Transform t)
     {
         for (; t != null && t != transform; t = t.parent)
             if (t.name == "Weapon") return true;
         return false;
     }
-
-
     public IEnumerator RunUpTo(UnitMotion target)
     {
         Prepare();
         if (!runToTarget || target == null) yield break;
-
         Vector3 from = transform.position;
         Vector3 toTarget = Flat(target.transform.position - from);
         Vector3 direction = toTarget.normalized;
         float stopDistance = ExtentToward(direction) + target.ExtentToward(-direction) + gap;
         if (toTarget.magnitude <= stopDistance) yield break;
-
         Vector3 spot = target.transform.position - direction * stopDistance;
         spot.y = from.y;
         float distance = Vector3.Distance(from, spot);
@@ -139,28 +121,23 @@ public class UnitMotion : MonoBehaviour
         float duration = Mathf.Clamp(distance / runSpeed, 0.25f, 0.9f);
         yield return Travel(spot, duration, 0.12f, strides, 12f);
     }
-
     public IEnumerator LungeForward(UnitMotion target)
     {
         Prepare();
         busy = true;
         lungeStart = transform.position;
-
         Vector3 direction = target != null ? Flat(target.transform.position - lungeStart).normalized : transform.forward;
         if (target != null) target.hitFrom = lungeStart;
-
         Vector3 windUp = lungeStart - direction * 0.15f;
         Vector3 strike = lungeStart + direction * 0.35f;
         yield return Slide(lungeStart, windUp, 0.14f, 0f);
         yield return Slide(windUp, strike, 0.1f, 0.15f);
     }
-
     public IEnumerator LungeBack()
     {
         yield return Slide(transform.position, lungeStart, 0.2f, 0f);
         busy = false;
     }
-
     public IEnumerator ReturnHome()
     {
         Prepare();
@@ -169,8 +146,6 @@ public class UnitMotion : MonoBehaviour
         float duration = Mathf.Clamp(distance / (runSpeed * 0.8f), 0.3f, 0.8f);
         yield return Travel(home, duration, 0.5f, 1, 6f);
     }
-
-
     public IEnumerator CastRise()
     {
         Prepare();
@@ -178,24 +153,19 @@ public class UnitMotion : MonoBehaviour
         castStart = transform.position;
         yield return Slide(castStart, castStart + Vector3.up * 0.25f, 0.25f, 0f);
     }
-
     public void CastSettle()
     {
         if (gameObject.activeInHierarchy) StartCoroutine(SettleAfterCast());
     }
-
     IEnumerator SettleAfterCast()
     {
         yield return Slide(transform.position, castStart, 0.3f, 0f);
         busy = false;
     }
-
-
     public void PlayHit()
     {
         if (gameObject.activeInHierarchy && !dead) StartCoroutine(HitReaction());
     }
-
     public void PlayDeath(bool isHero)
     {
         dead = true;
@@ -207,7 +177,6 @@ public class UnitMotion : MonoBehaviour
         StopAllCoroutines();
         StartCoroutine(isHero ? FallOver() : SinkAway());
     }
-
     IEnumerator HitReaction()
     {
         busy = true;
@@ -215,7 +184,6 @@ public class UnitMotion : MonoBehaviour
         Quaternion startRotation = transform.rotation;
         Vector3 away = Flat(start - hitFrom).normalized;
         Vector3 tiltAxis = Vector3.Cross(Vector3.up, away);
-
         float t = 0f;
         while (t < 1f)
         {
@@ -229,13 +197,11 @@ public class UnitMotion : MonoBehaviour
         transform.rotation = startRotation;
         busy = false;
     }
-
     IEnumerator FallOver()
     {
         busy = true;
         Quaternion start = transform.rotation;
         Quaternion end = start * Quaternion.Euler(0f, 0f, 90f);
-
         float t = 0f;
         while (t < 1f)
         {
@@ -252,7 +218,6 @@ public class UnitMotion : MonoBehaviour
         }
         transform.rotation = end;
     }
-
     IEnumerator SinkAway()
     {
         busy = true;
@@ -260,7 +225,6 @@ public class UnitMotion : MonoBehaviour
         Vector3 away = Flat(start - hitFrom).normalized;
         yield return Slide(start, start + away * 0.35f, 0.15f, 0.1f);
         yield return new WaitForSeconds(0.15f);
-
         Vector3 knocked = transform.position;
         float t = 0f;
         while (t < 1f)
@@ -272,22 +236,18 @@ public class UnitMotion : MonoBehaviour
         }
         gameObject.SetActive(false);
     }
-
     void Update()
     {
         if (busy || dead || !prepared) return;
         float breath = 1f + Mathf.Sin(Time.time * 2.4f + breathOffset) * 0.03f;
         transform.localScale = new Vector3(baseScale.x, baseScale.y * breath, baseScale.z);
     }
-
-
     void SetMoving(bool moving)
     {
         if (animator == null || animator.runtimeAnimatorController == null) return;
         foreach (AnimatorControllerParameter parameter in animator.parameters)
             if (parameter.name == "Moving") animator.SetBool("Moving", moving);
     }
-
     IEnumerator Travel(Vector3 to, float duration, float hopHeight, int hops, float leanDegrees)
     {
         busy = true;
@@ -295,7 +255,6 @@ public class UnitMotion : MonoBehaviour
         Vector3 from = transform.position;
         Quaternion startRotation = transform.rotation;
         Vector3 leanAxis = Vector3.Cross(Vector3.up, Flat(to - from).normalized);
-
         float t = 0f;
         while (t < 1f)
         {
@@ -312,7 +271,6 @@ public class UnitMotion : MonoBehaviour
         SetMoving(false);
         busy = false;
     }
-
     IEnumerator Slide(Vector3 from, Vector3 to, float duration, float hopHeight)
     {
         float t = 0f;
@@ -326,7 +284,6 @@ public class UnitMotion : MonoBehaviour
         }
         transform.position = to;
     }
-
     static Vector3 Flat(Vector3 v)
     {
         v.y = 0f;

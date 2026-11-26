@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
-
 public static class RoyalKingdomImporter
 {
     const string Folder="Assets/RoyalKingdom";
@@ -15,7 +14,6 @@ public static class RoyalKingdomImporter
     static readonly Vector3 Offset=new Vector3(100,0,0);
     static string Safe(string s){return string.Concat(s.Select(c=>char.IsLetterOrDigit(c)?c:'_'));}
     static Vector3 V(JToken t){return new Vector3((float)t[0],(float)t[1],(float)t[2]);}
-
     [MenuItem("Tools/Royal Kingdom/Import Cathedral District")]
     public static void Import()
     {
@@ -66,7 +64,6 @@ public static class RoyalKingdomImporter
         foreach(float x in new[]{-21.3f,21.3f})Box(borders.transform,"North garden edge",new Vector3(x,2,19.65f),new Vector3(17.4f,5,.5f));
         foreach(float x in new[]{-12.7f,12.7f})Box(borders.transform,"Cathedral rear support edge",new Vector3(x,3,22.6f),new Vector3(.45f,7,6.4f));
         Box(borders.transform,"Cathedral northern boundary",new Vector3(0,3,25.7f),new Vector3(26,7,.5f));
-        // Low-friction collision surfaces let the existing capsule climb the 25cm steps.
         var pm=AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(Folder+"/Materials/KingdomCollision.asset");
         if(pm==null){pm=new PhysicsMaterial("Kingdom low snag stone"){dynamicFriction=.2f,staticFriction=.2f,bounciness=0};AssetDatabase.CreateAsset(pm,Folder+"/Materials/KingdomCollision.asset");}
         foreach(var c in root.GetComponentsInChildren<Collider>())c.sharedMaterial=pm;
@@ -87,7 +84,6 @@ public static class RoyalKingdomImporter
         if(SceneView.lastActiveSceneView!=null)SceneView.lastActiveSceneView.LookAt(Offset+new Vector3(0,10,4),Quaternion.Euler(55,0,0),48);
         Debug.Log("ROYAL_KINGDOM_IMPORTED "+report.ToString(Newtonsoft.Json.Formatting.None));
     }
-
     static void Box(Transform parent,string name,Vector3 pos,Vector3 size){var g=new GameObject(name);g.transform.SetParent(parent,false);g.transform.localPosition=pos;g.AddComponent<BoxCollider>().size=size;}
     public static void SetupDaylight(GameObject root)
     {
@@ -106,7 +102,6 @@ public static class RoyalKingdomImporter
         var follow=Camera.main.GetComponent<MusicalMageFollowCamera>();if(follow!=null)follow.SnapToTarget();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
     }
-
     public static JObject Validate(GameObject root)
     {
         var test=EditorSceneManager.NewPreviewScene();
@@ -121,7 +116,6 @@ public static class RoyalKingdomImporter
                 if(bc!=null){var co=g.AddComponent<BoxCollider>();co.size=bc.size;co.center=bc.center;}
             }
             Physics.SyncTransforms();var ps=test.GetPhysicsScene();ps.Simulate(.02f);
-            // Test with the same feet-based capsule dimensions and step settings as the player.
             Vector3[] starts={new Vector3(0,.09f,4.1f),new Vector3(-12.7f,.09f,2.7f),new Vector3(0,1.6f,10),new Vector3(27.5f,.1f,-7),new Vector3(0,.1f,-18.7f),new Vector3(0,.1f,-8),new Vector3(0,1.6f,10),new Vector3(-12.7f,1.6f,11),new Vector3(-12.7f,1.6f,11.8f)};
             Vector3[] dirs={Vector3.forward,Vector3.forward,Vector3.forward,Vector3.right,Vector3.back,Vector3.right,Vector3.back,Vector3.back,Vector3.right};
             float[] lengths={6.1f,8.4f,5,4,4,8,6,8.6f,4};

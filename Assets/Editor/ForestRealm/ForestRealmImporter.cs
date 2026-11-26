@@ -9,8 +9,6 @@ using UnityEngine.SceneManagement;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.Rendering.Universal;
-
-// Imports the actual modeled Blender environment. No backdrop/image-plane replacement.
 public static class ForestRealmImporter
 {
     const string Folder = "Assets/ForestRealm";
@@ -22,7 +20,6 @@ public static class ForestRealmImporter
     static float Stream(float x) { return 4.8f + .65f * Mathf.Sin((x + 9f) * .55f); }
     static Vector3 Vec(JToken j) { return new Vector3((float)j[0], (float)j[1], (float)j[2]); }
     static string SafeName(string s) { return string.Concat(s.Select(c => char.IsLetterOrDigit(c) || c == '-' ? c : '_')); }
-
     [MenuItem("Tools/Forest Realm/Import Map With Collisions")]
     public static void Import()
     {
@@ -42,7 +39,6 @@ public static class ForestRealmImporter
         var visual = (GameObject)PrefabUtility.InstantiatePrefab(model);
         visual.name = "Blender Map - Editable Geometry";
         visual.transform.SetParent(root.transform, false);
-        // FBX's right-handed conversion negates X and Z on Unity import. Undo both with a rotation.
         visual.transform.localRotation = Quaternion.Euler(0, 180, 0) * model.transform.localRotation;
         PrefabUtility.UnpackPrefabInstance(visual, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
         var materials = BuildMaterials();
@@ -74,7 +70,6 @@ public static class ForestRealmImporter
         Border("East map edge", new Vector3(15.7f, 3, 0), new Vector3(.6f, 8, 28));
         Border("South map edge", new Vector3(0, 3, -13.7f), new Vector3(32, 8, .6f));
         Border("North map edge", new Vector3(0, 3, 13.7f), new Vector3(32, 8, .6f));
-        // Omit river-bank barriers only at the bridge's protected passage.
         var deck=visual.GetComponentsInChildren<MeshRenderer>().First(r=>r.name=="Bridge transverse arch stone.004").bounds;
         float bridgeX=deck.center.x,bridgeZ=deck.center.z;
         for (int side = -1; side <= 1; side += 2)
@@ -85,7 +80,6 @@ public static class ForestRealmImporter
         foreach (float x in new [] {bridgeX-1.13f,bridgeX+1.13f})
             Border("Bridge invisible safety railing", new Vector3(x, 3, bridgeZ), new Vector3(.26f, 8, 3.9f));
         AddStairApproach(root);
-        // Explicit spawn marker for an existing/future 3D player, without adding a controller.
         var spawn = new GameObject("Player Spawn - Clearing"); spawn.transform.SetParent(root.transform); spawn.transform.position = new Vector3(0, .35f, -1.5f);
         SetupView();
         Physics.SyncTransforms();
@@ -101,7 +95,6 @@ public static class ForestRealmImporter
         AssetDatabase.SaveAssets();
         Debug.Log("FOREST_IMPORT_COMPLETE " + results.ToString(Newtonsoft.Json.Formatting.None));
     }
-
     static Dictionary<string, Material> BuildMaterials()
     {
         var result = new Dictionary<string, Material>();
@@ -110,7 +103,6 @@ public static class ForestRealmImporter
             string name = (string)item["name"];
             var mat = new Material(Shader.Find("Universal Render Pipeline/Lit")); mat.name = name;
             var c = (JArray)item["color"];
-            // Blender material values are scene-linear; Unity's material color is authored in sRGB.
             Color col = new Color((float)c[0], (float)c[1], (float)c[2], 1).gamma;
             mat.SetColor("_BaseColor", col); mat.SetFloat("_Metallic", (float)item["metallic"]);
             mat.SetFloat("_Smoothness", (float)item["smoothness"]); mat.SetFloat("_Cull", 0);
@@ -127,7 +119,6 @@ public static class ForestRealmImporter
         }
         return result;
     }
-
     static bool Solid(Transform t)
     {
         string n = t.name;
@@ -208,7 +199,6 @@ public static class ForestRealmImporter
     }
     static void Point(string n, Vector3 pos, Color color,float power,float range,Transform parent)
     {var go=new GameObject(n);go.transform.SetParent(parent);go.transform.position=pos;var l=go.AddComponent<Light>();l.type=LightType.Point;l.color=color;l.intensity=power;l.range=range;}
-
     [MenuItem("Tools/Forest Realm/Validate Collisions")]
     public static void ValidateMenu()
     {
@@ -286,7 +276,6 @@ public static class ForestRealmImporter
                 drops.Add(new JObject{{"test",labels[i]},{"passed",ok},{"position",p.ToString("F3")}});
                 if(!ok)failures.Add(labels[i]);
             }
-            // Sweep a player-sized body through the bridge opening above its walking surface.
             var hits=new RaycastHit[32];
             int hitCount=physics.CapsuleCast(new Vector3(bridge.x,1.3f,bridge.z-2.4f),new Vector3(bridge.x,2.4f,bridge.z-2.4f),.30f,Vector3.forward,hits,4.8f,~0,QueryTriggerInteraction.Ignore);
             bool bridgeOpen=true;

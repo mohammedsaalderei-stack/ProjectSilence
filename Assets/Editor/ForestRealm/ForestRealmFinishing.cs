@@ -7,7 +7,6 @@ using UnityEditor.SceneManagement;
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
-
 public static class ForestRealmFinishing
 {
     const string Dir="Assets/ForestRealm/Finishing";
@@ -47,7 +46,6 @@ public static class ForestRealmFinishing
         Directory.CreateDirectory(Dir);rng=new System.Random(1771);
         root=new GameObject("Forest Realm - Twilight Extension").transform;Undo.RegisterCreatedObjectUndo(root.gameObject,"Finish woodland map");
         forest=Material("Shadowed Forest Foliage",new Color(.105f,.19f,.16f));earth=Material("Dark Woodland Earth",new Color(.10f,.14f,.115f));stone=Material("Moss Shadow Rock",new Color(.19f,.23f,.21f));
-        // Four-meter scenic collar conceals the diorama cuts without expanding the playable map greatly.
         var v=new List<Vector3>();var t=new List<int>();
         Vector2[] inner={new Vector2(-16,-14),new Vector2(16,-14),new Vector2(16,14),new Vector2(-16,14)};
         Vector2[] outer={new Vector2(-20,-18),new Vector2(20,-18),new Vector2(20,18),new Vector2(-20,18)};
@@ -61,7 +59,6 @@ public static class ForestRealmFinishing
         var me=new Mesh();me.SetVertices(v);me.SetTriangles(t,0);me.RecalculateNormals();me.RecalculateBounds();AssetDatabase.CreateAsset(me,Dir+"/WoodlandCollar.asset");
         var ground=new GameObject("Small forest continuation - scenic ground");ground.transform.SetParent(root);ground.AddComponent<MeshFilter>().sharedMesh=me;ground.AddComponent<MeshRenderer>().sharedMaterial=earth;
         var entry=GameObject.CreatePrimitive(PrimitiveType.Cube);entry.name="Entrance grove - solid ground";entry.transform.SetParent(root);entry.transform.position=new Vector3(0,-.25f,-15.45f);entry.transform.localScale=new Vector3(12,1.05f,4.5f);entry.GetComponent<Renderer>().sharedMaterial=earth;
-        // Widen the entrance slightly into a small enclosed arrival grove.
         var old=GameObject.Find("South map edge");if(old!=null)old.SetActive(false);
         Wall("South border west shoulder",new Vector3(-10.7f,3,-13.7f),new Vector3(10.6f,8,.6f));
         Wall("South border east shoulder",new Vector3(10.7f,3,-13.7f),new Vector3(10.6f,8,.6f));

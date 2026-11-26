@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
-
 public static class CombatExtensionImporter
 {
     const string Folder="Assets/ForestRealm/CombatExtension";
@@ -62,10 +61,9 @@ public static class CombatExtensionImporter
             }
             r.gameObject.isStatic=true;
             string n=r.name;
-            if(n.StartsWith("Extension • solid")||n.StartsWith("Hub east exit")||n.StartsWith("Sparse ancient")||n.StartsWith("Clearing • worn")||n.Contains("tapered trunk")||n.StartsWith("Buttress root")||n.StartsWith("Framing mossy boulder")||n.StartsWith("Fallen hollow")||n.StartsWith("Ancient boundary")||n.StartsWith("Faceted violet"))
+            if(n.StartsWith("Extension â€¢ solid")||n.StartsWith("Hub east exit")||n.StartsWith("Sparse ancient")||n.StartsWith("Clearing â€¢ worn")||n.Contains("tapered trunk")||n.StartsWith("Buttress root")||n.StartsWith("Framing mossy boulder")||n.StartsWith("Fallen hollow")||n.StartsWith("Ancient boundary")||n.StartsWith("Faceted violet"))
             {var c=r.gameObject.AddComponent<MeshCollider>();c.sharedMesh=r.GetComponent<MeshFilter>().sharedMesh;c.sharedMaterial=physicsMat;colliders++;}
         }
-        // Replace only the solid eastern wall's middle section with an accessible doorway.
         var oldWall=GameObject.Find("East map edge");if(oldWall!=null)oldWall.SetActive(false);
         Wall(root.transform,"East hub border - north of exit",new Vector3(15.7f,3,8.3f),new Vector3(.6f,8,11.4f));
         Wall(root.transform,"East hub border - south of exit",new Vector3(15.7f,3,-8.3f),new Vector3(.6f,8,11.4f));
@@ -97,7 +95,6 @@ public static class CombatExtensionImporter
             var light=new GameObject("Extension crystal glow");light.transform.SetParent(root.transform);light.transform.position=p0+Vector3.up*.3f;
             var l=light.AddComponent<Light>();l.type=LightType.Point;l.color=new Color(.57f,.24f,1);l.intensity=2.8f;l.range=4.4f;
         }
-        // Overview is inactive; the player's existing follow camera remains the gameplay camera.
         var overview=new GameObject("Extension Overview Camera");overview.transform.SetParent(root.transform);overview.transform.position=new Vector3(33,43,-35);overview.transform.LookAt(new Vector3(33,1.8f,1));
         var oc=overview.AddComponent<Camera>();oc.orthographic=true;oc.orthographicSize=11.4f;oc.enabled=false;oc.backgroundColor=Camera.main.backgroundColor;oc.clearFlags=CameraClearFlags.SolidColor;
         Physics.SyncTransforms();

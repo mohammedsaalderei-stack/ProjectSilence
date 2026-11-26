@@ -6,7 +6,6 @@ using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using System.Linq;
-
 public static class SimpleStartMenuSetup
 {
     static readonly Color Ivory=new Color(.94f,.90f,.81f);

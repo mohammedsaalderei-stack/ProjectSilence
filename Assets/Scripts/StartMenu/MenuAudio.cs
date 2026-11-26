@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-
 [DefaultExecutionOrder(-1000)]
 public sealed class MenuAudio : MonoBehaviour
 {

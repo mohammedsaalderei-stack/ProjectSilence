@@ -3,7 +3,6 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using System.IO;
-
 public static class MusicalMagePlayerSetup
 {
     [MenuItem("Tools/Musical Mage/Add Playable 2.5D Character")]
@@ -13,7 +12,6 @@ public static class MusicalMagePlayerSetup
         var root=GameObject.CreatePrimitive(PrimitiveType.Capsule);root.name="Musical Mage Player";
         Undo.RegisterCreatedObjectUndo(root,"Add 2.5D player");
         Object.DestroyImmediate(root.GetComponent<CapsuleCollider>());
-        // Keep the capsule shape for selection/debugging, hide its primitive surface in game.
         root.GetComponent<MeshRenderer>().enabled=false;
         var cc=root.AddComponent<CharacterController>();cc.height=1.75f;cc.radius=.28f;cc.center=new Vector3(0,.875f,0);cc.stepOffset=.35f;cc.slopeLimit=55;cc.skinWidth=.025f;cc.minMoveDistance=0;
         root.tag="Player";

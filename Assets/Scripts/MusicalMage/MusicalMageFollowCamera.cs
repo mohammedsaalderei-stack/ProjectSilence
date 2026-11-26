@@ -1,5 +1,4 @@
 using UnityEngine;
-
 [DefaultExecutionOrder(100)]
 [RequireComponent(typeof(Camera))]
 public sealed class MusicalMageFollowCamera : MonoBehaviour

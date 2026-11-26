@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9d39ccfc3469224aa05d3e1056d96b2, type: 3}
+  m_Name: UiTheme
+  m_EditorClassIdentifier: Assembly-CSharp::UiTheme
+  mainMenuArt: {fileID: 21300000, guid: 1dd7c7e1cbea8af49ad5a35f8b5267f8, type: 3}
+  endingArt: {fileID: 21300000, guid: a639177798230544cb85f431f431039d, type: 3}
+  button: {fileID: 21300000, guid: fd31e5d62abf73b4ebdebaa212ab5f83, type: 3}
+  buttonSelected: {fileID: 21300000, guid: 3e2b3b2340f5fc14dab1eefffd0d846d, type: 3}
+  buttonPressed: {fileID: 21300000, guid: f95b3b42d746e714e9449fe77e6da8f9, type: 3}
+  buttonDisabled: {fileID: 21300000, guid: a87b3953eb9ec17439a3c686829fe83a, type: 3}
+  panel: {fileID: 21300000, guid: a8284e20a8f56c54caeb22328568a7ff, type: 3}
+  panelSoft: {fileID: 21300000, guid: 4b17694b6c8bd614b8011426677edc28, type: 3}
+  divider: {fileID: 21300000, guid: 9dad6f0b988be944d97342efd868d7c9, type: 3}
+  fade: {fileID: 21300000, guid: d0f92147a9daf5346b273a04e291a89f, type: 3}
+  sliderTrack: {fileID: 21300000, guid: c19bf2bd5bda2914a921356aa6616bc6, type: 3}
+  sliderFill: {fileID: 21300000, guid: 671f7a387ed07f749a1571afbced74b3, type: 3}
+  sliderHandle: {fileID: 21300000, guid: 4127889a0b2864d46976b452f1fd2fbb, type: 3}
+  headingFont: {fileID: 12800000, guid: 69a2b9aa3af920b4daa78d8173c5f365, type: 3}
+  headingFontTmp: {fileID: 11400000, guid: 3fb0938889134c4479660c6cbb52e2c4, type: 2}
+  bodyFont: {fileID: 0}
+  textColor: {r: 0.95686275, g: 0.91764706, b: 0.8156863, a: 1}
+  headingColor: {r: 0.94509804, g: 0.8235294, b: 0.49411765, a: 1}
+  mutedColor: {r: 0.72156864, g: 0.6901961, b: 0.84705883, a: 1}
+  inkColor: {r: 0.043137256, g: 0.03137255, b: 0.09411765, a: 1}

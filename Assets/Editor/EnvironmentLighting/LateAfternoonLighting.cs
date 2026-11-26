@@ -6,7 +6,6 @@ using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using System.IO;
 using System.Linq;
-
 public static class LateAfternoonLighting
 {
     const string Folder="Assets/EnvironmentLighting";
@@ -16,7 +15,6 @@ public static class LateAfternoonLighting
     {
         if(EditorApplication.isPlaying)throw new System.InvalidOperationException("Stop Play mode first.");
         Directory.CreateDirectory(Folder);
-        // One shared lighting setup for every district; no regional night lights.
         foreach(var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
         {
             if(l.type==LightType.Directional||l.type==LightType.Spot){Object.DestroyImmediate(l.gameObject);continue;}

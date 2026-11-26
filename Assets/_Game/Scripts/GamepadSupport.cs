@@ -5,16 +5,13 @@ using UnityEngine.InputSystem.DualShock;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-
 public class GamepadSupport : MonoBehaviour
 {
     public static bool UsingGamepad { get; private set; }
-
     public static string Confirm => IsPlayStation ? "Cross" : "A";
     public static string Back => IsPlayStation ? "Circle" : "B";
     public static string Pause => IsPlayStation ? "Options" : "Start";
     static bool IsPlayStation => Gamepad.current is DualShockGamepad;
-
     public static string Words(string text)
     {
         if (string.IsNullOrEmpty(text) || text.IndexOf('{') < 0) return text;
@@ -27,17 +24,14 @@ public class GamepadSupport : MonoBehaviour
                    .Replace("{back}", pad ? Back : "Esc")
                    .Replace("{beat}", pad ? Confirm : "Space");
     }
-
     static float lastPadUse = -10f;
     static float mouseTravel;
-
     EventSystem fixedEventSystem;
     GameObject outlinedObject;
     Outline outline;
     float nextSelectCheck;
     Text menuHint;
     GameObject menuHintCanvas;
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -46,7 +40,6 @@ public class GamepadSupport : MonoBehaviour
         lastPadUse = -10f;
         mouseTravel = 0f;
     }
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Install()
     {
@@ -54,24 +47,20 @@ public class GamepadSupport : MonoBehaviour
         DontDestroyOnLoad(go);
         go.AddComponent<GamepadSupport>();
         Application.targetFrameRate = 144;
-
         if (Gamepad.all.Count > 0) SwitchTo(true, Gamepad.all[0].displayName + " is connected");
         InputSystem.onDeviceChange += OnDeviceChange;
     }
-
     static void OnDeviceChange(InputDevice device, InputDeviceChange change)
     {
         if (device is Gamepad && (change == InputDeviceChange.Added || change == InputDeviceChange.Reconnected))
             SwitchTo(true, device.displayName + " was switched on");
     }
-
     static void SwitchTo(bool gamepad, string reason)
     {
         if (UsingGamepad == gamepad) return;
         UsingGamepad = gamepad;
         Debug.Log("Input: now using " + (gamepad ? "a controller" : "keyboard and mouse") + " (" + reason + ")");
     }
-
     void Update()
     {
         TrackLastDevice();
@@ -83,7 +72,6 @@ public class GamepadSupport : MonoBehaviour
         if (UsingGamepad) PressBackButtonOnB();
         OutlineSelected(UsingGamepad ? events.currentSelectedGameObject : null);
     }
-
     static void TrackLastDevice()
     {
         foreach (Gamepad pad in Gamepad.all)
@@ -93,12 +81,10 @@ public class GamepadSupport : MonoBehaviour
             if (Gamepad.current != pad) pad.MakeCurrent();
             SwitchTo(true, pad.displayName + " was used");
         }
-
         Mouse mouse = Mouse.current;
         mouseTravel = Mathf.Max(0f, mouseTravel - 150f * Time.unscaledDeltaTime);
         if (mouse != null) mouseTravel += mouse.delta.ReadValue().magnitude;
         if (Time.unscaledTime - lastPadUse < 0.5f) return;
-
         Keyboard keyboard = Keyboard.current;
         if (keyboard != null && keyboard.anyKey.wasPressedThisFrame) SwitchTo(false, "a key was pressed");
         if (mouse != null && (mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
@@ -109,7 +95,6 @@ public class GamepadSupport : MonoBehaviour
             SwitchTo(false, "the mouse was moved");
         }
     }
-
     static bool PadInUse(Gamepad pad)
     {
         return pad.leftStick.ReadValue().sqrMagnitude > 0.25f || pad.rightStick.ReadValue().sqrMagnitude > 0.25f
@@ -120,7 +105,6 @@ public class GamepadSupport : MonoBehaviour
                || pad.leftTrigger.isPressed || pad.rightTrigger.isPressed
                || pad.leftStickButton.isPressed || pad.rightStickButton.isPressed;
     }
-
     void GiveUiInput(EventSystem events)
     {
         if (fixedEventSystem == events) return;
@@ -129,7 +113,6 @@ public class GamepadSupport : MonoBehaviour
         if (module != null && (module.actionsAsset == null || module.move == null || module.move.action == null))
             module.AssignDefaultActions();
     }
-
     void KeepAButtonSelected(EventSystem events)
     {
         GameObject current = events.currentSelectedGameObject;
@@ -140,7 +123,6 @@ public class GamepadSupport : MonoBehaviour
         }
         if (Time.unscaledTime < nextSelectCheck) return;
         nextSelectCheck = Time.unscaledTime + 0.1f;
-
         Selectable best = null;
         foreach (Selectable candidate in Selectable.allSelectablesArray)
         {
@@ -149,7 +131,6 @@ public class GamepadSupport : MonoBehaviour
         }
         if (best != null) events.SetSelectedGameObject(best.gameObject);
     }
-
     static bool IsHigherOrMoreLeft(Selectable a, Selectable b)
     {
         Vector3 pa = a.transform.position;
@@ -157,7 +138,6 @@ public class GamepadSupport : MonoBehaviour
         if (Mathf.Abs(pa.y - pb.y) > 10f) return pa.y > pb.y;
         return pa.x < pb.x;
     }
-
     void PressBackButtonOnB()
     {
         if (SceneManager.GetActiveScene().name != GameFlow.MenuScene) return;
@@ -174,7 +154,6 @@ public class GamepadSupport : MonoBehaviour
             }
         }
     }
-
     void OutlineSelected(GameObject selected)
     {
         if (selected == outlinedObject) return;
@@ -182,11 +161,12 @@ public class GamepadSupport : MonoBehaviour
         outline = null;
         outlinedObject = selected;
         if (selected == null || selected.GetComponent<Graphic>() == null) return;
+        Selectable selectable = selected.GetComponent<Selectable>();
+        if (selectable != null && selectable.transition == Selectable.Transition.SpriteSwap) return;
         outline = selected.AddComponent<Outline>();
         outline.effectColor = new Color(1f, 0.82f, 0.3f, 1f);
         outline.effectDistance = new Vector2(5f, -5f);
     }
-
     void ShowMenuHint()
     {
         bool inMenu = SceneManager.GetActiveScene().name == GameFlow.MenuScene;
@@ -194,15 +174,14 @@ public class GamepadSupport : MonoBehaviour
         {
             if (!inMenu) return;
             menuHint = MakeMenuHint();
-            menuHintCanvas = menuHint.transform.parent.gameObject;
+            menuHintCanvas = menuHint.canvas.gameObject;
         }
         if (menuHintCanvas.activeSelf != inMenu) menuHintCanvas.SetActive(inMenu);
         if (!inMenu) return;
         menuHint.text = UsingGamepad
             ? "D-pad / left stick: choose     " + Confirm + ": select     " + Back + ": back"
-            : "Click with the mouse, or use the arrow keys and Enter.   A controller works too.";
+            : "Mouse, or arrow keys + Enter     Â·     a controller works too";
     }
-
     Text MakeMenuHint()
     {
         var canvasObject = new GameObject("Menu Controls Hint", typeof(Canvas), typeof(CanvasScaler));
@@ -214,20 +193,24 @@ public class GamepadSupport : MonoBehaviour
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.matchWidthOrHeight = 0.5f;
-
+        UiTheme theme = UiTheme.Get();
+        Image box = UiKit.MakeImage(canvasObject.transform, "Hint Box", null, new Vector2(0.5f, 0f), new Vector2(0f, 28f), new Vector2(760f, 42f), true);
+        if (theme != null && theme.panelSoft != null) UiKit.StyleWindow(box, true);
+        else box.color = new Color(0f, 0f, 0f, 0.5f);
         var textObject = new GameObject("Hint", typeof(RectTransform), typeof(Text), typeof(Outline));
-        textObject.transform.SetParent(canvasObject.transform, false);
+        textObject.transform.SetParent(box.transform, false);
         RectTransform rect = (RectTransform)textObject.transform;
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0f);
-        rect.anchoredPosition = new Vector2(0f, 30f);
-        rect.sizeDelta = new Vector2(1600f, 40f);
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(20f, 4f);
+        rect.offsetMax = new Vector2(-20f, -4f);
         Text text = textObject.GetComponent<Text>();
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        text.fontSize = 26;
+        text.font = theme != null ? theme.Body : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.fontSize = 20;
         text.alignment = TextAnchor.MiddleCenter;
-        text.color = new Color(1f, 1f, 1f, 0.85f);
+        text.color = theme != null ? theme.textColor : new Color(1f, 1f, 1f, 0.85f);
         text.raycastTarget = false;
-        textObject.GetComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.85f);
+        textObject.GetComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
         return text;
     }
 }

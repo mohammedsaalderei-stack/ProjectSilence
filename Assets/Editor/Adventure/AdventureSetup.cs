@@ -5,7 +5,6 @@ using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
-
 public static class AdventureSetup
 {
     const string RootName = "Adventure - Mobs and NPCs";
@@ -16,20 +15,19 @@ public static class AdventureSetup
     {
         "Assets/Scenes/_Menu.unity", "Assets/Scenes/Kingdom.unity", "Assets/Scenes/Forest.unity", "Assets/_Game/Scenes/Battle.unity"
     };
-
     [MenuItem("Silence/Place Mobs and NPCs")]
     public static void PlaceAll()
     {
         FinaleSetup.SetUp();
         MusicSlots.Ensure();
         SoundSlots.Ensure();
+        UiStyleSetup.StyleAll();
         SetUpKingdom();
         SetUpForest();
         EditorBuildSettings.scenes = BuildScenes.Select(p => new EditorBuildSettingsScene(p, true)).ToArray();
         AssetDatabase.SaveAssets();
         Debug.Log("ADVENTURE setup done");
     }
-
     public static void PlaceAndBuild()
     {
         PlaceAll();
@@ -38,14 +36,12 @@ public static class AdventureSetup
         if (i >= 0 && i + 1 < args.Length) Build(args[i + 1]);
         EditorApplication.Exit(0);
     }
-
     [MenuItem("Silence/Build Windows Game")]
     public static void BuildFromMenu()
     {
         string folder = EditorUtility.SaveFolderPanel("Build Project Silence into", "", "Build");
         if (!string.IsNullOrEmpty(folder)) Build(System.IO.Path.Combine(folder, "ProjectSilence.exe"));
     }
-
     static void Build(string exePath)
     {
         PlayerSettings.bakeCollisionMeshes = true;
@@ -58,8 +54,6 @@ public static class AdventureSetup
         });
         Debug.Log("ADVENTURE build: " + report.summary.result + ", errors " + report.summary.totalErrors + ", " + exePath);
     }
-
-
     static void SetUpKingdom()
     {
         var scene = EditorSceneManager.OpenScene("Assets/Scenes/Kingdom.unity");
@@ -80,7 +74,6 @@ public static class AdventureSetup
             "They say a stone giant, the Hollow Colossus, hums at the heart of the woods. Break it and the Silence fades.");
         EditorSceneManager.SaveScene(scene);
     }
-
     static void SetUpForest()
     {
         var scene = EditorSceneManager.OpenScene("Assets/Scenes/Forest.unity");
@@ -95,7 +88,6 @@ public static class AdventureSetup
         Mob(c, "forest_wolves", "Hollow Wolf pack", 0, 1.8f, false, WolfModel, 0.7f, new Vector2(24f, 0.4f), 1f);
         Mob(c, "forest_golem", "Mute Golem", 1, 1.3f, false, GolemModel, 1.2f, new Vector2(33f, 1f), 0.85f);
         Mob(c, "forest_boss", "Hollow Colossus", 1, 2.6f, true, GolemModel, 1.9f, new Vector2(42f, 2f), 0.8f);
-
         OverworldMob vale = Mob(c, "forest_final", "Archcantor Vale", 2, 1f, false, GolemModel, 1.3f, new Vector2(43f, 4f), 0f, "Enemy_SorcererKing");
         vale.isFinalBoss = true;
         vale.appearsAfterMob = "forest_boss";
@@ -110,8 +102,6 @@ public static class AdventureSetup
         };
         EditorSceneManager.SaveScene(scene);
     }
-
-
     class Context
     {
         public Transform root;
@@ -122,13 +112,11 @@ public static class AdventureSetup
         public Sprite npcSprite;
         public Vector3 spriteLocalPosition, spriteLocalScale;
     }
-
     static Context Begin(float groundY)
     {
         GameObject old = GameObject.Find(RootName);
         if (old != null) Object.DestroyImmediate(old);
         Physics.SyncTransforms();
-
         MusicalMagePlayer player = Object.FindAnyObjectByType<MusicalMagePlayer>(FindObjectsInactive.Include);
         var c = new Context
         {
@@ -146,7 +134,6 @@ public static class AdventureSetup
                   + " walk " + c.playerWalk + " sprint " + c.playerSprint + " npc sprite " + (c.npcSprite != null ? c.npcSprite.name : "none"));
         return c;
     }
-
     static void Npc(Context c, string name, Vector2 wanted, Color tint, float size, bool heals, params string[] lines)
     {
         Vector3 spot = FindSpot(c, wanted, 0.3f * c.scale, c.playerHeight);
@@ -163,7 +150,6 @@ public static class AdventureSetup
         body.height = 1.75f;
         body.radius = 0.28f;
         body.center = new Vector3(0f, 0.875f, 0f);
-
         var sprite = new GameObject("Sprite");
         sprite.transform.SetParent(go.transform, false);
         sprite.transform.localPosition = c.spriteLocalPosition;
@@ -173,7 +159,6 @@ public static class AdventureSetup
         renderer.sprite = own != null ? own : c.npcSprite;
         renderer.color = own != null ? Color.white : tint;
         renderer.flipX = own == null && name.Length % 2 == 0;
-
         var label = new GameObject("Name");
         label.transform.SetParent(sprite.transform, false);
         label.transform.localPosition = Vector3.up * 1.35f;
@@ -187,18 +172,15 @@ public static class AdventureSetup
         label.GetComponent<MeshRenderer>().sharedMaterial = text.font.material;
         Debug.Log("ADVENTURE npc '" + name + "' at " + spot.ToString("F1"));
     }
-
     static OverworldMob Mob(Context c, string id, string displayName, int group, float boost, bool boss, string modelPath, float heightVsPlayer, Vector2 wanted, float speedFactor, string spriteName = null)
     {
         GameObject modelAsset = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
         float targetHeight = c.playerHeight * heightVsPlayer;
         Vector3 spot = FindSpot(c, wanted, 0.35f * targetHeight, targetHeight);
-
         var go = new GameObject("Mob - " + displayName + " (" + id + ")");
         go.transform.SetParent(c.root, false);
         go.transform.position = spot;
         go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-
         Sprite art = LoadCharacterSprite(spriteName ?? (modelPath == WolfModel ? "Enemy_CrystalWolf" : "Enemy_StoneGolem"), false);
         if (art != null)
         {
@@ -224,12 +206,10 @@ public static class AdventureSetup
                 animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(GolemController);
             }
         }
-
         CharacterController body = go.AddComponent<CharacterController>();
         body.height = Mathf.Max(targetHeight, 0.5f);
         body.radius = Mathf.Clamp(targetHeight * 0.3f, 0.2f, body.height * 0.5f);
         body.center = new Vector3(0f, body.height * 0.5f + 0.05f, 0f);
-
         OverworldMob mob = go.AddComponent<OverworldMob>();
         mob.mobId = id;
         mob.displayName = displayName;
@@ -245,7 +225,6 @@ public static class AdventureSetup
         Debug.Log("ADVENTURE mob '" + id + "' at " + spot.ToString("F1") + " height " + targetHeight.ToString("F2") + " chase " + mob.chaseSpeed.ToString("F1"));
         return mob;
     }
-
     static Sprite LoadCharacterSprite(string fileName, bool pixelArt)
     {
         string path = "Assets/Sprites/Characters/" + fileName + ".png";
@@ -269,7 +248,6 @@ public static class AdventureSetup
         }
         return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
-
     static Sprite FindNpcSprite()
     {
         foreach (string path in new[] { "Assets/Sprites/MusicalMage/Walk_S_00.png", "Assets/Sprites/MusicalMage/Sprint_S_00.png" })
@@ -289,7 +267,6 @@ public static class AdventureSetup
         }
         return sprites.FirstOrDefault();
     }
-
     static Bounds MeasureBounds(GameObject model)
     {
         Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
@@ -299,12 +276,10 @@ public static class AdventureSetup
         bounds.center -= model.transform.position;
         return bounds;
     }
-
     static Vector3 FindSpot(Context c, Vector2 wanted, float radius, float height)
     {
         return new Vector3(wanted.x, c.groundY, wanted.y);
     }
-
     static Vector3 FindSpotInEditor(Context c, Vector2 wanted, float radius, float height)
     {
         for (int ring = 0; ring <= 8; ring++)

@@ -1,5 +1,4 @@
 using UnityEngine;
-
 [RequireComponent(typeof(BoxCollider))]
 public sealed class RealmSceneExit : MonoBehaviour
 {

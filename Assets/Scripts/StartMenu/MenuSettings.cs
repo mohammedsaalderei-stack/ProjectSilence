@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-
 public sealed class MenuSettings : MonoBehaviour
 {
     public GameObject mainPanel,settingsPanel;

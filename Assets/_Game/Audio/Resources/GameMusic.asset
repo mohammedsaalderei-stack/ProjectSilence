@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameMusic
   mainMenu: {fileID: 8300000, guid: f69cd567db922634eb883eca3419607d, type: 3}
   city: {fileID: 8300000, guid: 647ded44035b03a489bf899ab5b9ffc6, type: 3}
-  forest: {fileID: 0}
+  forest: {fileID: 8300000, guid: 9c4f7c53007be7e48b2de697496a553c, type: 3}
   battle:
     song: {fileID: 8300000, guid: c4a8797b6d0e99d40837acde23bd19c9, type: 3}
     beatsPerMinute: 78
@@ -31,4 +31,4 @@ MonoBehaviour:
   defeat: {fileID: 8300000, guid: fade4af680e7a48438669ef68d7277a0, type: 3}
   ending: {fileID: 8300000, guid: f2264d7a39ec3244f9ade1470d7098fb, type: 3}
   volume: 0.35
-  muffleForest: 1
+  muffleForest: 0

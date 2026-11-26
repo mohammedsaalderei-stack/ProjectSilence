@@ -3,7 +3,6 @@ using UnityEngine.UI;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
-
 public static class FantasyMenuSetup
 {
     static Color gold=new Color(.67f,.51f,.27f),cream=new Color(.92f,.84f,.64f),ink=new Color(.025f,.055f,.075f);

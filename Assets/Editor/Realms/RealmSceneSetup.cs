@@ -8,7 +8,6 @@ using System;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
-
 public static class RealmSceneSetup
 {
     const string Scenes="Assets/Scenes/";
