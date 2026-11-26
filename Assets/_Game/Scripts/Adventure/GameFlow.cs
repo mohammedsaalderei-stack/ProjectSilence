@@ -3,15 +3,6 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// =====================================================================================
-// GameFlow.cs - written with AI help (Claude, 25 Nov 2026). List it in READ THIS DOCTOR.txt.
-//
-// The adventure's memory between scenes. It is "static", so it survives scene loads:
-//   - which overworld mob started the battle, and where to send the player back to
-//   - which mobs are already defeated (they stay gone)
-//   - the party's HP and MP between battles
-//   - whether the boss is beaten (then the map shows the ending)
-// =====================================================================================
 public static class GameFlow
 {
     public const string BattleScene = "Battle";
@@ -26,10 +17,12 @@ public static class GameFlow
     public static readonly HashSet<string> DefeatedMobs = new HashSet<string>();
     public static bool BossDefeated;
     public static bool EndingShown;
-    public static bool IntroShown;           // the opening narration has played
-    public static bool Busy;                 // talking, paused or changing scene: mobs stand still
+    public static bool IntroShown;
+    public static bool PendingIsFinal;
+    public static bool FinalDefeated;
+    public static bool ValeRevealShown;
+    public static bool Busy;
 
-    // The battle being fought right now (set by the mob that caught the player).
     public static bool InBattleFromMap;
     public static string PendingMobId;
     public static string PendingMobName;
@@ -40,10 +33,9 @@ public static class GameFlow
     public static Vector3 ReturnPosition;
     public static bool LastBattleWon;
 
-    // What the map does when it loads again after a battle.
     public static bool PlaceAtReturnPosition;
     public static string MessageOnReturn;
-    public static float SafeUntil;           // mobs ignore the player until this time (no instant re-fight)
+    public static float SafeUntil;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     public static void NewGame()
@@ -53,6 +45,9 @@ public static class GameFlow
         BossDefeated = false;
         EndingShown = false;
         IntroShown = false;
+        PendingIsFinal = false;
+        FinalDefeated = false;
+        ValeRevealShown = false;
         Busy = false;
         InBattleFromMap = false;
         PendingMobId = null;
@@ -66,7 +61,6 @@ public static class GameFlow
         SafeUntil = 0f;
     }
 
-    // An OverworldMob calls this when it touches the player.
     public static void StartBattle(OverworldMob mob, Vector3 playerPosition)
     {
         if (Busy) return;
@@ -77,16 +71,16 @@ public static class GameFlow
         PendingEnemyGroup = mob.enemyGroup;
         PendingEnemyBoost = mob.enemyBoost;
         PendingIsBoss = mob.isBoss;
+        PendingIsFinal = mob.isFinalBoss;
         ReturnScene = SceneManager.GetActiveScene().name;
         ReturnPosition = playerPosition;
-        GameAudio.StopMusic();
-        GameAudio.Play(ProjectSilence.Synth.BattleStart, 0.9f);
+        GameAudio.PauseSong();
+        GameAudio.Play(GameSounds.Slots.battleStart);
 
         if (AdventureDirector.Instance != null) AdventureDirector.Instance.FlashThenLoad(BattleScene);
         else SceneManager.LoadScene(BattleScene);
     }
 
-    // BattleManager calls this when a battle starts: HP and MP carry over, and the boss gets stronger.
     public static void ApplyToBattle(List<Unit> party, List<Unit> enemies)
     {
         foreach (Unit hero in party)
@@ -97,9 +91,8 @@ public static class GameFlow
         }
 
         if (!InBattleFromMap) return;
-        if (PendingIsBoss)
+        if (PendingIsBoss && !PendingIsFinal)
         {
-            // The boss fights alone: keep the toughest enemy of the group, send the others away.
             Unit boss = enemies.OrderByDescending(e => e.maxHP).First();
             foreach (Unit other in enemies.Where(e => e != boss).ToList())
             {
@@ -120,7 +113,6 @@ public static class GameFlow
         }
     }
 
-    // BattleManager calls this when the battle is won or lost.
     public static void SaveParty(List<Unit> party, bool won)
     {
         LastBattleWon = won;
@@ -128,29 +120,28 @@ public static class GameFlow
         {
             Party[hero.unitName] = new HeroState
             {
-                hp = won ? Mathf.Max(1, hero.currentHP) : hero.maxHP,   // fallen heroes get back up with 1 HP
+                hp = won ? Mathf.Max(1, hero.currentHP) : hero.maxHP,
                 maxHp = hero.maxHP,
-                // A win gives back a quarter of the MP; a defeat sends you back fully healed.
                 mp = won ? Mathf.Min(hero.maxMP, hero.currentMP + Mathf.CeilToInt(hero.maxMP * 0.25f)) : hero.maxMP,
                 maxMp = hero.maxMP
             };
         }
     }
 
-    // The Continue button after a battle.
     public static void EndBattle()
     {
         InBattleFromMap = false;
         if (LastBattleWon)
         {
             if (!string.IsNullOrEmpty(PendingMobId)) DefeatedMobs.Add(PendingMobId);
-            if (PendingIsBoss) BossDefeated = true;
+            if (PendingIsFinal) FinalDefeated = true;
+            else if (PendingIsBoss) BossDefeated = true;
             PlaceAtReturnPosition = true;
-            MessageOnReturn = PendingIsBoss ? null : "Victory! The " + PendingMobName + " is gone.";
+            MessageOnReturn = PendingIsBoss || PendingIsFinal ? null : "Victory! The " + PendingMobName + " is gone.";
         }
         else
         {
-            PlaceAtReturnPosition = false;   // back to where you entered this area
+            PlaceAtReturnPosition = false;
             MessageOnReturn = "Your party fell... You wake at the edge of the area, fully healed.";
         }
         SafeUntil = Time.time + 2.5f;
@@ -172,7 +163,10 @@ public static class GameFlow
 
     public static string PartySummary()
     {
-        if (Party.Count == 0) return "Party: Maestro and Harmony, ready";
-        return string.Join("     ", Party.Select(p => p.Key + "  HP " + p.Value.hp + "/" + p.Value.maxHp + "  MP " + p.Value.mp + "/" + p.Value.maxMp));
+        if (Party.Count == 0) return "Party: Maestro, Harmony, Forte and Lyra, ready";
+        string[] heroes = Party.Select(p => p.Key + "  HP " + p.Value.hp + "/" + p.Value.maxHp + "  MP " + p.Value.mp + "/" + p.Value.maxMp).ToArray();
+        string summary = "";
+        for (int i = 0; i < heroes.Length; i++) summary += (i == 0 ? "" : i % 2 == 0 ? "\n" : "      ") + heroes[i];
+        return summary;
     }
 }

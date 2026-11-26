@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f8148057075891488a4eff5dc6668a6, type: 3}
+  m_Name: GameMusic
+  m_EditorClassIdentifier: Assembly-CSharp::GameMusic
+  mainMenu: {fileID: 8300000, guid: f69cd567db922634eb883eca3419607d, type: 3}
+  city: {fileID: 0}
+  forest: {fileID: 0}
+  battle:
+    song: {fileID: 8300000, guid: c4a8797b6d0e99d40837acde23bd19c9, type: 3}
+    beatsPerMinute: 78
+    firstBeatAt: 0
+  bossBattle:
+    song: {fileID: 0}
+    beatsPerMinute: 100
+    firstBeatAt: 0
+  finalBattle:
+    song: {fileID: 0}
+    beatsPerMinute: 100
+    firstBeatAt: 0
+  victory: {fileID: 0}
+  defeat: {fileID: 0}
+  ending: {fileID: 0}
+  volume: 0.35
+  muffleForest: 0

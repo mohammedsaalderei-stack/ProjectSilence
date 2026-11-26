@@ -15,13 +15,17 @@ public class Unit : MonoBehaviour
     public int magic = 12;
     [Tooltip("Colour of this unit's spells.")]
     public Color spellColor = new Color(1f, 0.8f, 0.3f);
+    [Tooltip("Enemy spellcaster (Archcantor Vale): attacks with spells from where it stands.")]
+    public bool castsSpells;
+    [Tooltip("A caster hits the whole party every this many turns (0 = never).")]
+    public int chordEvery;
 
     [HideInInspector] public int currentHP;
     [HideInInspector] public int currentMP;
     [HideInInspector] public bool isGuarding;
 
     Animator animator;
-    UnitMotion motion;   // Added with AI help: moves and animates this unit in battle (see UnitMotion.cs)
+    UnitMotion motion;
 
     public bool IsDead => currentHP <= 0;
     public UnitMotion Motion => motion;
@@ -32,7 +36,6 @@ public class Unit : MonoBehaviour
         currentMP = maxMP;
         animator = GetComponentInChildren<Animator>();
 
-        // Added with AI help: use the UnitMotion on this object, or add one (so the scene needs no changes).
         motion = GetComponent<UnitMotion>();
         if (motion == null) motion = gameObject.AddComponent<UnitMotion>();
     }
@@ -42,11 +45,10 @@ public class Unit : MonoBehaviour
         if (isGuarding) amount /= 2;
         amount = Mathf.Max(1, amount);
         currentHP = Mathf.Max(0, currentHP - amount);
-        // Added with AI help: the number pops up and you hear the hit (a guarded hit sounds like a block).
         FloatingText.Show(motion.HeadPoint, amount.ToString(), isPlayer ? new Color(1f, 0.55f, 0.5f) : Color.white, isGuarding ? 0.9f : 1.15f);
-        GameAudio.Play(isGuarding ? ProjectSilence.Synth.Block : ProjectSilence.Synth.Hit, 0.8f);
+        GameAudio.Play(isGuarding ? GameSounds.Slots.block : GameSounds.Slots.hit);
         if (IsDead) Die();
-        else motion.PlayHit();   // Added with AI help: flinch when hit
+        else motion.PlayHit();
         return amount;
     }
 
@@ -54,8 +56,8 @@ public class Unit : MonoBehaviour
     {
         int healed = Mathf.Min(amount, maxHP - currentHP);
         currentHP += healed;
-        FloatingText.Show(motion.HeadPoint, "+" + healed, new Color(0.5f, 1f, 0.55f));   // AI help
-        GameAudio.Play(ProjectSilence.Synth.Heal, 0.7f);                                  // AI help
+        FloatingText.Show(motion.HeadPoint, "+" + healed, new Color(0.5f, 1f, 0.55f));
+        GameAudio.Play(GameSounds.Slots.heal);
         return healed;
     }
 
@@ -64,8 +66,6 @@ public class Unit : MonoBehaviour
         if (animator != null && animator.runtimeAnimatorController != null) animator.SetTrigger("Attack");
     }
 
-    // Added with AI help: plays the "Cast" animation if the Animator has a Cast trigger,
-    // otherwise the normal attack animation.
     public void PlayCast()
     {
         if (animator == null || animator.runtimeAnimatorController == null) return;
@@ -82,8 +82,6 @@ public class Unit : MonoBehaviour
 
     void Die()
     {
-        // Changed with AI help. Before: heroes snapped onto their side and enemies vanished at once.
-        // Now UnitMotion animates it: heroes fall over, enemies sink into the ground and vanish.
         motion.PlayDeath(isPlayer);
     }
 }

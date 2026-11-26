@@ -1,35 +1,37 @@
-using ProjectSilence;
 using UnityEngine;
 
-// =====================================================================================
-// GameAudio.cs - written with AI help (Claude, 25 Nov 2026). List it in READ THIS DOCTOR.txt.
-//
-// Sound effects and map music. All sounds are generated in code by Synth.cs, so no audio files
-// are needed (swap in recorded sounds later by passing your own AudioClips to Play).
-//   GameAudio.Play(Synth.Hit);                 a one-shot sound
-//   GameAudio.PlayMapMusic(clarity);           the field song; clarity 0..1 (low = muffled by the Silence)
-//   GameAudio.StopMusic();
-// The music player survives scene loads, so the song keeps going between the Kingdom and the Forest.
-// =====================================================================================
 public static class GameAudio
 {
-    public static float SfxVolume = 0.8f;
-    public static float MusicVolume = 0.4f;
+    public static float MusicVolume
+    {
+        get
+        {
+            GameMusic songs = GameMusic.Get();
+            return songs != null ? songs.volume : 0.35f;
+        }
+    }
+
+    public static float SfxVolume => GameSounds.Slots.volume;
 
     static AudioSource[] pool;
     static int next;
-    static AudioSource music;
+    static AudioSource song, once;
     static AudioLowPassFilter muffle;
-    static float targetCutoff = 22000f;
+    static AudioClip wantedSong;
+    static float wantedCutoff = 22000f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
         pool = null;
-        music = null;
-        muffle = null;
         next = 0;
+        song = null;
+        once = null;
+        muffle = null;
+        wantedSong = null;
+        wantedCutoff = 22000f;
     }
+
 
     public static void Play(AudioClip clip, float volume = 1f, float pitch = 1f)
     {
@@ -52,37 +54,90 @@ public static class GameAudio
         source.PlayOneShot(clip, volume * SfxVolume);
     }
 
-    // The field song. clarity 1 = clear, 0 = almost swallowed by the Silence (a low-pass filter).
-    public static void PlayMapMusic(float clarity)
+
+    public static void PlaySong(AudioClip clip, bool muffled = false)
     {
-        if (music == null)
+        MakeMusicPlayers();
+        wantedCutoff = muffled ? 1200f : 22000f;
+        if (once.isPlaying) once.Stop();
+        wantedSong = clip;
+        if (clip != null && song.clip == clip && !song.isPlaying)
         {
-            var go = new GameObject("Map Music");
-            Object.DontDestroyOnLoad(go);
-            music = go.AddComponent<AudioSource>();
-            music.loop = true;
-            music.playOnAwake = false;
-            muffle = go.AddComponent<AudioLowPassFilter>();
-            go.AddComponent<MusicFader>();
+            song.UnPause();
+            if (!song.isPlaying) song.Play();
         }
-        if (music.clip == null) music.clip = Synth.FieldSong();
-        music.volume = MusicVolume * Mathf.Lerp(0.55f, 1f, clarity);
-        targetCutoff = Mathf.Lerp(700f, 22000f, clarity * clarity);
-        if (!music.isPlaying) music.Play();
     }
 
-    public static void StopMusic()
+    public static void PauseSong()
     {
-        if (music != null) music.Stop();
+        if (song != null) song.Pause();
     }
 
-    // Slides the filter smoothly when the clarity changes (entering the Forest, beating the boss).
+    public static void UseMenuSong(AudioClip clip)
+    {
+        GameObject menuAudio = GameObject.Find("Menu Audio");
+        AudioSource source = menuAudio != null ? menuAudio.GetComponent<AudioSource>() : null;
+        if (source == null || source.clip == clip) return;
+        source.Stop();
+        source.clip = clip;
+        if (clip != null) source.Play();
+    }
+
+    public static void PlayOnce(AudioClip clip)
+    {
+        if (clip == null) return;
+        MakeMusicPlayers();
+        once.Stop();
+        once.clip = clip;
+        once.volume = MusicVolume;
+        once.Play();
+    }
+
+    static void MakeMusicPlayers()
+    {
+        if (song != null) return;
+        var go = new GameObject("Music Player");
+        Object.DontDestroyOnLoad(go);
+        song = go.AddComponent<AudioSource>();
+        song.loop = true;
+        song.playOnAwake = false;
+        song.ignoreListenerPause = true;
+        muffle = go.AddComponent<AudioLowPassFilter>();
+        muffle.cutoffFrequency = 22000f;
+
+        var onceObject = new GameObject("Play Once");
+        onceObject.transform.SetParent(go.transform);
+        once = onceObject.AddComponent<AudioSource>();
+        once.loop = false;
+        once.playOnAwake = false;
+        once.ignoreListenerPause = true;
+
+        go.AddComponent<MusicFader>();
+    }
+
     class MusicFader : MonoBehaviour
     {
         void Update()
         {
-            if (muffle == null) return;
-            muffle.cutoffFrequency = Mathf.Lerp(muffle.cutoffFrequency, targetCutoff, Time.unscaledDeltaTime * 1.5f);
+            float target = MusicVolume;
+            float step = Time.unscaledDeltaTime / 0.8f * Mathf.Max(0.05f, target);
+            if (song.clip != wantedSong)
+            {
+                song.volume = Mathf.MoveTowards(song.volume, 0f, step);
+                if (song.volume <= 0.001f || !song.isPlaying)
+                {
+                    song.Stop();
+                    song.clip = wantedSong;
+                    song.volume = 0f;
+                    if (wantedSong != null) song.Play();
+                }
+            }
+            else if (song.isPlaying)
+            {
+                song.volume = Mathf.MoveTowards(song.volume, target, step);
+            }
+            muffle.cutoffFrequency = Mathf.Lerp(muffle.cutoffFrequency, wantedCutoff, Time.unscaledDeltaTime * 1.5f);
+            once.volume = target;
         }
     }
 }

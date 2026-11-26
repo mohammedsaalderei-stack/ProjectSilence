@@ -8,17 +8,6 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-// =====================================================================================
-// AdventureDirector.cs - written with AI help (Claude, 25 Nov 2026). List it in READ THIS DOCTOR.txt.
-//
-// Adds itself to every map scene (any scene with a MusicalMagePlayer). It:
-//   - puts the player back where a battle started (or at the area entrance after a defeat)
-//   - shows the goal, the party's HP/MP, "E  Talk" prompts, the dialogue box and short messages
-//   - flashes the screen when a mob catches you, then loads the battle
-//   - shows the ending once the boss is beaten
-//   - Esc pauses (Resume / Main menu / Quit)
-// The whole HUD is built from code, so the scenes need no changes.
-// =====================================================================================
 public class AdventureDirector : MonoBehaviour
 {
     public static AdventureDirector Instance { get; private set; }
@@ -27,8 +16,8 @@ public class AdventureDirector : MonoBehaviour
     NpcTalk[] npcs;
     Font font;
     Text goalText, partyText, promptText, toastText, dialogueName, dialogueText, controlsText, dialogueHint;
-    Button resumeButton, endingMenuButton;
-    GameObject dialoguePanel, pausePanel, endingPanel;
+    Button resumeButton, endingMenuButton, controlsButton, controlsCloseButton;
+    GameObject dialoguePanel, pausePanel, endingPanel, controlsPanel;
     Image flash;
     NpcTalk talkingTo;
     int lineIndex;
@@ -54,11 +43,13 @@ public class AdventureDirector : MonoBehaviour
         Time.timeScale = 1f;
         if (scene.name == GameFlow.MenuScene)
         {
-            GameFlow.NewGame();                                              // a fresh start from the menu
-            GameAudio.StopMusic();                                           // the menu plays its own music
+            GameFlow.NewGame();
+            GameMusic songs = GameMusic.Get();
+            GameAudio.PlaySong(null);
+            if (songs != null) GameAudio.UseMenuSong(songs.mainMenu);
             return;
         }
-        if (FindAnyObjectByType<MusicalMagePlayer>() == null) return;        // not a map (for example the battle)
+        if (FindAnyObjectByType<MusicalMagePlayer>() == null) return;
         if (Instance != null) return;
         new GameObject("Adventure Director").AddComponent<AdventureDirector>();
     }
@@ -72,7 +63,7 @@ public class AdventureDirector : MonoBehaviour
         if (EventSystem.current == null)
         {
             var events = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
-            events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();   // mouse, keyboard and controller
+            events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
         }
         BuildUI();
     }
@@ -96,12 +87,27 @@ public class AdventureDirector : MonoBehaviour
         goalText.text = Goal(scene);
         partyText.text = GameFlow.PartySummary();
 
-        // Music as matter: the field song is clear in the Kingdom, muffled by the Silence in the Forest,
-        // and comes back clear once the Hollow Colossus is beaten.
-        GameAudio.PlayMapMusic(scene == "Forest" && !GameFlow.BossDefeated ? 0.2f : 1f);
+        GameMusic songs = GameMusic.Get();
+        if (songs != null)
+        {
+            bool forest = scene == "Forest";
+            GameAudio.PlaySong(forest ? songs.forest : songs.city, forest && songs.muffleForest && !GameFlow.FinalDefeated);
+        }
 
-        if (GameFlow.BossDefeated && !GameFlow.EndingShown) StartCoroutine(ShowEndingSoon());
+        if (GameFlow.FinalDefeated && !GameFlow.EndingShown) StartCoroutine(ShowEndingSoon());
+        else if (scene == "Forest" && GameFlow.BossDefeated && !GameFlow.ValeRevealShown) StartCoroutine(ValeReveal());
         else if (scene == "Kingdom" && !GameFlow.IntroShown) StartCoroutine(OpeningNarration());
+    }
+
+    IEnumerator ValeReveal()
+    {
+        GameFlow.ValeRevealShown = true;
+        GameFlow.Busy = true;
+        yield return new WaitForSeconds(1f);
+        Narrate("Project Silence",
+            "The Hollow Colossus crumbles into silent stone... but the forest does not wake up.",
+            "A cold voice drifts between the trees: \"So the old Maestro's student has finally come.\"",
+            "Archcantor Vale, the one who tried to bind every voice into one endless chord, waits at the heart of the forest.");
     }
 
     IEnumerator OpeningNarration()
@@ -112,13 +118,10 @@ public class AdventureDirector : MonoBehaviour
         Narrate("Project Silence",
             "Cantoria was built on song. Every bell, every voice, every footstep holds the world together.",
             "Now a Silence is creeping out of the Forest. Where it passes, music dies, and so does everything it held up.",
-            "You are the Maestro. With Harmony at your side, find the source of the Silence and break it.",
-            GamepadSupport.UsingGamepad
-                ? "Left stick to walk, L3 to sprint, " + GamepadSupport.Confirm + " to talk. Townsfolk can help you."
-                : "WASD to walk, Shift to sprint, E to talk. Townsfolk can help you.");
+            "You are the Maestro. With Harmony, Forte and Lyra at your side, find the source of the Silence and break it.",
+            "{move} to walk, {sprint} to sprint, {talk} to talk, {pause} to pause and see all the controls. Townsfolk can help you.");
     }
 
-    // A narrator speaking through the dialogue box (a hidden NpcTalk that no one can walk up to).
     void Narrate(string speaker, params string[] lines)
     {
         NpcTalk narrator = gameObject.AddComponent<NpcTalk>();
@@ -128,9 +131,18 @@ public class AdventureDirector : MonoBehaviour
         StartTalking(narrator);
     }
 
+    System.Action afterTalk;
+
+    public void NarrateThen(string speaker, string[] lines, System.Action after)
+    {
+        afterTalk = after;
+        Narrate(speaker, lines);
+    }
+
     static string Goal(string scene)
     {
-        if (GameFlow.BossDefeated) return "Goal: The Silence is broken!";
+        if (GameFlow.FinalDefeated) return "Goal: The Silence is broken!";
+        if (GameFlow.BossDefeated) return "Goal: Archcantor Vale waits at the heart of the Forest.\nFace him and end the Silence.";
         if (scene == "Kingdom") return "Goal: The Silence is spreading from the Forest.\nLeave by the east gate and stop it.";
         if (scene == "Forest") return "Goal: Find the Hollow Colossus deep in the Forest\nand defeat it.";
         return "Goal: Stop the Silence.";
@@ -141,7 +153,6 @@ public class AdventureDirector : MonoBehaviour
 
     void Update()
     {
-        // A key counts once when it goes down (holding it does nothing more).
         Keyboard keyboard = Keyboard.current;
         Gamepad pad = Gamepad.current;
         bool confirmDown = (keyboard != null && (keyboard.eKey.isPressed || keyboard.enterKey.isPressed || keyboard.numpadEnterKey.isPressed || keyboard.spaceKey.isPressed))
@@ -156,6 +167,11 @@ public class AdventureDirector : MonoBehaviour
         backHeld = backDown;
 
         if (endingPanel.activeSelf) return;
+        if (controlsPanel.activeSelf)
+        {
+            if (back || pausePressed) ShowControls(false);
+            return;
+        }
         if (pausePressed && talkingTo == null)
         {
             SetPaused(!pausePanel.activeSelf);
@@ -163,31 +179,29 @@ public class AdventureDirector : MonoBehaviour
         }
         if (pausePanel.activeSelf)
         {
-            if (back) SetPaused(false);                      // B closes the pause menu
+            if (back) SetPaused(false);
             return;
         }
 
         bool pad1 = GamepadSupport.UsingGamepad;
         NpcTalk nearest = talkingTo == null && !GameFlow.Busy ? NearestNpc() : null;
-        promptText.text = nearest != null ? (pad1 ? GamepadSupport.Confirm : "E") + "   Talk to " + nearest.npcName : "";
+        promptText.text = nearest != null ? GamepadSupport.Words("{talk}   Talk to ") + nearest.npcName : "";
         if (confirm) Confirm();
 
         if (Time.time > nextPartyRefresh)
         {
             partyText.text = GameFlow.PartySummary();
-            controlsText.text = pad1
-                ? "Left stick move    L3 sprint    " + GamepadSupport.Confirm + " talk    " + GamepadSupport.Pause + " pause"
-                : "WASD move    Shift sprint    E talk    Esc pause";
+            controlsText.text = GamepadSupport.Words("{move} move    {sprint} sprint    {talk} talk    {pause} pause / controls");
             dialogueHint.text = (pad1 ? GamepadSupport.Confirm : "E / Enter") + ": next";
+            if (talkingTo != null) ShowLine();
             nextPartyRefresh = Time.time + 0.25f;
         }
         toastText.gameObject.SetActive(Time.time < toastUntil);
     }
 
-    // E / Enter / Space / gamepad A: talk to the nearest person, or show the next line.
     public void Confirm()
     {
-        if (Time.unscaledTime < confirmReadyAt) return;      // one press = one step
+        if (Time.unscaledTime < confirmReadyAt) return;
         confirmReadyAt = Time.unscaledTime + 0.15f;
         if (talkingTo != null)
         {
@@ -201,7 +215,6 @@ public class AdventureDirector : MonoBehaviour
 
     public bool IsTalking => talkingTo != null;
 
-    // ---- talking ------------------------------------------------------------------------
 
     NpcTalk NearestNpc()
     {
@@ -217,17 +230,17 @@ public class AdventureDirector : MonoBehaviour
         talkingTo = npc;
         lineIndex = 0;
         GameFlow.Busy = true;
-        if (player != null) player.DriveForSeconds(Vector2.zero, false, 100000f);   // stand still while talking
+        if (player != null) player.DriveForSeconds(Vector2.zero, false, 100000f);
         promptText.text = "";
         dialoguePanel.SetActive(true);
-        GameAudio.Play(ProjectSilence.Synth.UiConfirm, 0.5f);
+        GameAudio.Play(GameSounds.Slots.talk);
         ShowLine();
     }
 
     void ShowLine()
     {
         dialogueName.text = talkingTo.npcName;
-        dialogueText.text = talkingTo.lines.Length > 0 ? talkingTo.lines[lineIndex] : "...";
+        dialogueText.text = talkingTo.lines.Length > 0 ? GamepadSupport.Words(talkingTo.lines[lineIndex]) : "...";
     }
 
     void NextLine()
@@ -235,7 +248,7 @@ public class AdventureDirector : MonoBehaviour
         lineIndex++;
         if (lineIndex < talkingTo.lines.Length)
         {
-            GameAudio.Play(ProjectSilence.Synth.Tick, 0.5f);
+            GameAudio.Play(GameSounds.Slots.nextLine);
             ShowLine();
             return;
         }
@@ -246,14 +259,16 @@ public class AdventureDirector : MonoBehaviour
         if (player != null) player.DriveForSeconds(Vector2.zero, false, 0f);
         if (heal)
         {
-            GameAudio.Play(ProjectSilence.Synth.Heal, 0.8f);
+            GameAudio.Play(GameSounds.Slots.heal);
             GameFlow.HealParty();
             partyText.text = GameFlow.PartySummary();
             Toast("Your party is fully healed.");
         }
+        System.Action after = afterTalk;
+        afterTalk = null;
+        after?.Invoke();
     }
 
-    // ---- messages, battle flash, pause, ending ---------------------------------------------
 
     public void Toast(string message)
     {
@@ -281,11 +296,58 @@ public class AdventureDirector : MonoBehaviour
     void SetPaused(bool paused)
     {
         pausePanel.SetActive(paused);
-        GameAudio.Play(paused ? ProjectSilence.Synth.UiConfirm : ProjectSilence.Synth.UiBack, 0.6f);
+        GameAudio.Play(paused ? GameSounds.Slots.confirm : GameSounds.Slots.back);
         Time.timeScale = paused ? 0f : 1f;
         GameFlow.Busy = paused;
-        confirmReadyAt = Time.unscaledTime + 0.35f;   // the press that clicked "Resume" must not also start a talk
+        confirmReadyAt = Time.unscaledTime + 0.35f;
         if (paused && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(resumeButton.gameObject);
+    }
+
+    void ShowControls(bool show)
+    {
+        controlsPanel.SetActive(show);
+        pausePanel.SetActive(!show);
+        GameAudio.Play(show ? GameSounds.Slots.confirm : GameSounds.Slots.back);
+        if (EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(show ? controlsCloseButton.gameObject : controlsButton.gameObject);
+    }
+
+    void BuildControlsScreen(Transform root, Color gold)
+    {
+        controlsPanel = MakePanel(root, "Controls Screen", Vector2.zero, Vector2.zero, Vector2.zero, new Color(0.02f, 0.02f, 0.06f, 0.95f));
+        Stretch((RectTransform)controlsPanel.transform);
+        Text title = MakeText(controlsPanel.transform, "Title", 60, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 410f), new Vector2(1200f, 80f));
+        title.text = "Controls";
+        title.color = gold;
+
+        string[,] rows =
+        {
+            { "",                       "Keyboard + mouse",               "Controller (Xbox / PlayStation)" },
+            { "Walk",                   "WASD or arrow keys",             "Left stick" },
+            { "Sprint (hold)",          "Shift",                          "RT, or L3 (press the left stick in)" },
+            { "Talk / next line",       "E or Enter",                     "A / Cross" },
+            { "Pause",                  "Esc",                            "Start / Options" },
+            { "Battle: choose action",  "Click a button",                 "D-pad or stick, then A / Cross" },
+            { "Battle: choose enemy",   "Click it (or arrows + Enter)",   "Left / Right, then A / Cross" },
+            { "Battle: go back",        "Esc or right-click",             "B / Circle" },
+            { "Battle: hit the beat",   "Space",                          "A / Cross" },
+            { "Menus",                  "Mouse, or arrows + Enter",       "D-pad or stick, A / Cross, B / Circle" },
+        };
+        float[] columnCenter = { -650f, -150f, 500f };
+        float[] columnWidth = { 460f, 500f, 760f };
+        for (int column = 0; column < 3; column++)
+        {
+            var lines = new System.Text.StringBuilder();
+            for (int row = 0; row < rows.GetLength(0); row++)
+                lines.AppendLine(row == 0 ? "<b>" + rows[row, column] + "</b>" : rows[row, column]);
+            Text text = MakeText(controlsPanel.transform, "Column " + column, 32, TextAnchor.UpperLeft, new Vector2(0.5f, 0.5f),
+                                 new Vector2(columnCenter[column], 30f), new Vector2(columnWidth[column], 600f));
+            text.lineSpacing = 1.35f;
+            text.text = lines.ToString();
+            if (column == 0) text.color = gold;
+        }
+        controlsCloseButton = MakeButton(controlsPanel.transform, "Close", new Vector2(0f, -400f), () => ShowControls(false));
+        controlsPanel.SetActive(false);
     }
 
     IEnumerator ShowEndingSoon()
@@ -294,6 +356,8 @@ public class AdventureDirector : MonoBehaviour
         GameFlow.Busy = true;
         yield return new WaitForSecondsRealtime(1.2f);
         endingPanel.SetActive(true);
+        GameMusic songs = GameMusic.Get();
+        if (songs != null && songs.ending != null) GameAudio.PlaySong(songs.ending);
         if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(endingMenuButton.gameObject);
     }
 
@@ -312,7 +376,6 @@ public class AdventureDirector : MonoBehaviour
         Vector3 delta = position - player.transform.position;
         player.transform.position = position;
         if (capsule != null) capsule.enabled = true;
-        // Make the cameras jump to the player instead of sliding across the map.
         foreach (MusicalMageFollowCamera follow in FindObjectsByType<MusicalMageFollowCamera>()) follow.SnapToTarget();
         foreach (Unity.Cinemachine.CinemachineCamera cam in FindObjectsByType<Unity.Cinemachine.CinemachineCamera>())
             cam.OnTargetObjectWarped(player.transform, delta);
@@ -324,7 +387,6 @@ public class AdventureDirector : MonoBehaviour
         return v;
     }
 
-    // ---- building the HUD from code -------------------------------------------------------
 
     void BuildUI()
     {
@@ -365,9 +427,11 @@ public class AdventureDirector : MonoBehaviour
         Stretch((RectTransform)pausePanel.transform);
         MakeText(pausePanel.transform, "Title", 64, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 200f), new Vector2(900f, 90f)).text = "Paused";
         resumeButton = MakeButton(pausePanel.transform, "Resume", new Vector2(0f, 60f), () => SetPaused(false));
-        MakeButton(pausePanel.transform, "Main menu", new Vector2(0f, -40f), GoToMenu);
-        MakeButton(pausePanel.transform, "Quit", new Vector2(0f, -140f), Application.Quit);
+        controlsButton = MakeButton(pausePanel.transform, "Controls", new Vector2(0f, -40f), () => ShowControls(true));
+        MakeButton(pausePanel.transform, "Main menu", new Vector2(0f, -140f), GoToMenu);
+        MakeButton(pausePanel.transform, "Quit", new Vector2(0f, -240f), Application.Quit);
         pausePanel.SetActive(false);
+        BuildControlsScreen(root, gold);
 
         endingPanel = MakePanel(root, "Ending", Vector2.zero, Vector2.zero, Vector2.zero, new Color(0.02f, 0.02f, 0.06f, 0.92f));
         Stretch((RectTransform)endingPanel.transform);
@@ -375,10 +439,10 @@ public class AdventureDirector : MonoBehaviour
         endTitle.text = "The Silence Breaks";
         endTitle.color = gold;
         MakeText(endingPanel.transform, "Story", 32, TextAnchor.UpperCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(1300f, 360f)).text =
-            "The Hollow Colossus crumbles, and every sound it swallowed pours back into the forest:\n" +
-            "birdsong, wind in the leaves, and far away, the cathedral bells of the kingdom.\n\n" +
-            "The Silence has lost its hold on this land, for now.\n" +
-            "Somewhere beyond the hills, the unfinished chord is still waiting for its last note.\n\n" +
+            "Archcantor Vale falls, and his endless chord finally finds its last note.\n" +
+            "Every sound the Silence swallowed pours back into the world: birdsong,\n" +
+            "wind in the leaves, and far away, the cathedral bells of the kingdom.\n\n" +
+            "Maestro, Harmony, Forte and Lyra walk home through a forest that sings again.\n\n" +
             "Thank you for playing Project Silence.";
         endingMenuButton = MakeButton(endingPanel.transform, "Main menu", new Vector2(0f, -250f), GoToMenu);
         MakeButton(endingPanel.transform, "Quit", new Vector2(0f, -350f), Application.Quit);
@@ -425,7 +489,6 @@ public class AdventureDirector : MonoBehaviour
     {
         GameObject panel = MakePanel(parent, label + " Button", new Vector2(0.5f, 0.5f), position, new Vector2(420f, 80f), Color.white);
         Button button = panel.AddComponent<Button>();
-        // The colour shows the state: dark blue normally, gold when selected (controller) or hovered (mouse).
         ColorBlock colors = button.colors;
         colors.normalColor = new Color(0.15f, 0.15f, 0.28f);
         colors.highlightedColor = new Color(0.75f, 0.58f, 0.2f);

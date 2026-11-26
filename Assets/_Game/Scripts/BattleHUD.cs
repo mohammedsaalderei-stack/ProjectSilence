@@ -11,24 +11,31 @@ public class BattleHUD : MonoBehaviour
     public Text enemyText;
     public GameObject actionPanel;
     public Button healButton;
-    public Button magicButton;   // Added with AI help. Leave empty and a "Magic" button is made from the Heal button.
+    public Button magicButton;
     public GameObject timingPanel;
     public RectTransform ring;
     public Text judgmentText;
     public GameObject resultPanel;
     public Text resultText;
 
-    // Added with AI help: if no Magic button is set in the Inspector, copy the Heal button
-    // (same look and size). The Action Panel's layout group places it next to the others.
     void Awake()
     {
         if (magicButton == null && healButton != null)
         {
             magicButton = Instantiate(healButton, healButton.transform.parent);
             magicButton.name = "Magic Button";
-            magicButton.onClick = new Button.ButtonClickedEvent();   // forget the Heal click that was copied too
+            magicButton.onClick = new Button.ButtonClickedEvent();
             Text label = magicButton.GetComponentInChildren<Text>();
             if (label != null) label.text = "Magic";
+        }
+
+        if (partyText != null)
+        {
+            partyText.resizeTextForBestFit = true;
+            partyText.resizeTextMinSize = 10;
+            partyText.resizeTextMaxSize = Mathf.Max(11, partyText.fontSize);
+            RectTransform panel = partyText.transform.parent as RectTransform;
+            if (panel != null && panel.sizeDelta.y < 200f) panel.sizeDelta = new Vector2(panel.sizeDelta.x, 200f);
         }
     }
 
@@ -48,7 +55,7 @@ public class BattleHUD : MonoBehaviour
         enemyText.text = string.Join("\n", enemies.Where(u => !u.IsDead).Select(u => u.unitName + "   HP " + u.currentHP + "/" + u.maxHP));
     }
 
-    public void ShowActions(bool show, bool canHeal, bool canMagic = false)   // AI help: added canMagic
+    public void ShowActions(bool show, bool canHeal, bool canMagic = false)
     {
         actionPanel.SetActive(show);
         healButton.interactable = canHeal;

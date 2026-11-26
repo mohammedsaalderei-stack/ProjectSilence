@@ -6,16 +6,6 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-// =====================================================================================
-// AdventureSetup.cs - written with AI help (Claude, 25 Nov 2026). List it in READ THIS DOCTOR.txt.
-//
-// Menu "Silence > Place Mobs and NPCs": puts the NPCs and overworld mobs into the Kingdom and Forest
-// scenes (on solid ground, with room to stand), sets the battle music to 78 BPM and adds the
-// Battle scene to the build. Running it again replaces what it placed before.
-// After that, move the objects around freely in the scenes - they are normal GameObjects under
-// "Adventure - Mobs and NPCs".
-// Menu "Silence > Build Windows Game": builds the game into the folder you pick.
-// =====================================================================================
 public static class AdventureSetup
 {
     const string RootName = "Adventure - Mobs and NPCs";
@@ -30,7 +20,9 @@ public static class AdventureSetup
     [MenuItem("Silence/Place Mobs and NPCs")]
     public static void PlaceAll()
     {
-        SetBattleTempo();
+        FinaleSetup.SetUp();
+        MusicSlots.Ensure();
+        SoundSlots.Ensure();
         SetUpKingdom();
         SetUpForest();
         EditorBuildSettings.scenes = BuildScenes.Select(p => new EditorBuildSettingsScene(p, true)).ToArray();
@@ -38,7 +30,6 @@ public static class AdventureSetup
         Debug.Log("ADVENTURE setup done");
     }
 
-    // Batch-mode entry: place everything, then build into -adventureBuildPath (if given).
     public static void PlaceAndBuild()
     {
         PlaceAll();
@@ -57,7 +48,6 @@ public static class AdventureSetup
 
     static void Build(string exePath)
     {
-        // The maps' floors are 1,300+ mesh colliders: bake their collision data into the build.
         PlayerSettings.bakeCollisionMeshes = true;
         BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
@@ -69,18 +59,6 @@ public static class AdventureSetup
         Debug.Log("ADVENTURE build: " + report.summary.result + ", errors " + report.summary.totalErrors + ", " + exePath);
     }
 
-    // ---- scenes -------------------------------------------------------------------------------------
-
-    static void SetBattleTempo()
-    {
-        var scene = EditorSceneManager.OpenScene("Assets/_Game/Scenes/Battle.unity");
-        foreach (BattleMusic music in Object.FindObjectsByType<BattleMusic>(FindObjectsInactive.Include))
-        {
-            music.bpm = 78f;   // battlemusic.mp3 is 156 BPM; 78 = every second beat (easier to hit)
-            EditorUtility.SetDirty(music);
-        }
-        EditorSceneManager.SaveScene(scene);
-    }
 
     static void SetUpKingdom()
     {
@@ -98,10 +76,8 @@ public static class AdventureSetup
             "That unfinished chord is the Silence. It hungers for the note it never got.");
         Npc(c, "Guard Bram", new Vector2(146f, -5f), new Color(0.62f, 0.68f, 0.78f), 1f, false,
             "Halt! Past this east gate lies the Forest. Something there swallows every sound: birds, wind, even footsteps.",
-            "Hollow wolves have already slipped past us. If one catches you, you must fight. Sprint with Shift to get away.",
+            "Hollow wolves prowl the forest paths. If one catches you, you must fight. Sprint with {sprint} to get away.",
             "They say a stone giant, the Hollow Colossus, hums at the heart of the woods. Break it and the Silence fades.");
-        Mob(c, "kingdom_wolves_1", "Hollow Wolf pack", 0, 1f, false, WolfModel, 0.7f, new Vector2(126f, -6f), 1f);
-        Mob(c, "kingdom_wolves_2", "Hollow Wolf pack", 0, 1f, false, WolfModel, 0.7f, new Vector2(138f, 6f), 1f);
         EditorSceneManager.SaveScene(scene);
     }
 
@@ -116,19 +92,31 @@ public static class AdventureSetup
             "This old bell-stone still hums, so the Silence keeps its distance here.",
             "Rest, and let it tune you. Beyond the east path the Hollow Colossus waits.",
             "Cast your spells on the beat. Magic cuts through its stone hide.");
-        Mob(c, "forest_wolves", "Hollow Wolf pack", 0, 1f, false, WolfModel, 0.7f, new Vector2(24f, 0.4f), 1f);
-        Mob(c, "forest_golem", "Mute Golem", 1, 0.75f, false, GolemModel, 1.2f, new Vector2(33f, 1f), 0.85f);
-        Mob(c, "forest_boss", "Hollow Colossus", 1, 1.7f, true, GolemModel, 1.9f, new Vector2(42f, 2f), 0.8f);
+        Mob(c, "forest_wolves", "Hollow Wolf pack", 0, 1.8f, false, WolfModel, 0.7f, new Vector2(24f, 0.4f), 1f);
+        Mob(c, "forest_golem", "Mute Golem", 1, 1.3f, false, GolemModel, 1.2f, new Vector2(33f, 1f), 0.85f);
+        Mob(c, "forest_boss", "Hollow Colossus", 1, 2.6f, true, GolemModel, 1.9f, new Vector2(42f, 2f), 0.8f);
+
+        OverworldMob vale = Mob(c, "forest_final", "Archcantor Vale", 2, 1f, false, GolemModel, 1.3f, new Vector2(43f, 4f), 0f, "Enemy_SorcererKing");
+        vale.isFinalBoss = true;
+        vale.appearsAfterMob = "forest_boss";
+        vale.wanderRadius = 0f;
+        vale.noticeRadius = 5f * c.scale;
+        vale.introLines = new[]
+        {
+            "So. The old Maestro's student has finally come, with a little choir of strays.",
+            "Your teacher lowered his baton before my chord could end. Every voice in Cantoria, held forever in one perfect note, and he called it a cage.",
+            "The Silence is only my chord, waiting to be finished. Stand aside, or become part of it.",
+            "Maestro: \"Every song needs an ending, Vale. We came to play yours.\""
+        };
         EditorSceneManager.SaveScene(scene);
     }
 
-    // ---- placing things -------------------------------------------------------------------------------
 
     class Context
     {
         public Transform root;
         public float groundY;
-        public float scale;          // the player's size in this scene (the Kingdom is twice as big)
+        public float scale;
         public float playerHeight;
         public float playerWalk, playerSprint;
         public Sprite npcSprite;
@@ -171,7 +159,7 @@ public static class AdventureSetup
         talk.lines = lines;
         talk.healsParty = heals;
         talk.talkRange = 2.2f * c.scale;
-        CapsuleCollider body = go.AddComponent<CapsuleCollider>();   // so the player bumps into them
+        CapsuleCollider body = go.AddComponent<CapsuleCollider>();
         body.height = 1.75f;
         body.radius = 0.28f;
         body.center = new Vector3(0f, 0.875f, 0f);
@@ -181,7 +169,6 @@ public static class AdventureSetup
         sprite.transform.localPosition = c.spriteLocalPosition;
         sprite.transform.localScale = c.spriteLocalScale;
         SpriteRenderer renderer = sprite.AddComponent<SpriteRenderer>();
-        // Your own NPC sprite (Assets/Sprites/Characters/NPC_<Name>.png); the tinted Musical Mage if it is missing.
         Sprite own = LoadCharacterSprite("NPC_" + name.Replace(" ", ""), true);
         renderer.sprite = own != null ? own : c.npcSprite;
         renderer.color = own != null ? Color.white : tint;
@@ -201,7 +188,7 @@ public static class AdventureSetup
         Debug.Log("ADVENTURE npc '" + name + "' at " + spot.ToString("F1"));
     }
 
-    static void Mob(Context c, string id, string displayName, int group, float boost, bool boss, string modelPath, float heightVsPlayer, Vector2 wanted, float speedFactor)
+    static OverworldMob Mob(Context c, string id, string displayName, int group, float boost, bool boss, string modelPath, float heightVsPlayer, Vector2 wanted, float speedFactor, string spriteName = null)
     {
         GameObject modelAsset = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
         float targetHeight = c.playerHeight * heightVsPlayer;
@@ -210,10 +197,9 @@ public static class AdventureSetup
         var go = new GameObject("Mob - " + displayName + " (" + id + ")");
         go.transform.SetParent(c.root, false);
         go.transform.position = spot;
-        go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);   // facing the camera to start with
+        go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
 
-        // Your enemy sprite on the map (2.5D style, always facing the camera); the 3D model if it is missing.
-        Sprite art = LoadCharacterSprite(modelPath == WolfModel ? "Enemy_CrystalWolf" : "Enemy_StoneGolem", false);
+        Sprite art = LoadCharacterSprite(spriteName ?? (modelPath == WolfModel ? "Enemy_CrystalWolf" : "Enemy_StoneGolem"), false);
         if (art != null)
         {
             var sprite = new GameObject("Sprite");
@@ -221,7 +207,7 @@ public static class AdventureSetup
             sprite.transform.localScale = Vector3.one * (targetHeight * 1.3f / (256f / 120f));
             SpriteRenderer renderer = sprite.AddComponent<SpriteRenderer>();
             renderer.sprite = art;
-            if (boss) renderer.color = new Color(0.86f, 0.8f, 1f);   // a faint purple glow for the Colossus
+            if (boss) renderer.color = new Color(0.86f, 0.8f, 1f);
         }
         else
         {
@@ -230,7 +216,7 @@ public static class AdventureSetup
             Bounds bounds = MeasureBounds(model);
             float modelScale = targetHeight / Mathf.Max(0.05f, bounds.size.y);
             model.transform.localScale = Vector3.one * modelScale;
-            model.transform.localPosition = Vector3.up * (-bounds.min.y * modelScale);   // feet on the ground
+            model.transform.localPosition = Vector3.up * (-bounds.min.y * modelScale);
             if (modelPath == GolemModel)
             {
                 Animator animator = model.GetComponentInChildren<Animator>();
@@ -254,14 +240,12 @@ public static class AdventureSetup
         mob.noticeRadius = (boss ? 4.5f : 5f) * c.scale;
         mob.giveUpRadius = (boss ? 9f : 10f) * c.scale;
         mob.walkSpeed = c.playerWalk * 0.45f * speedFactor;
-        // Faster than walking, slower than sprinting: you can always escape by sprinting.
         mob.chaseSpeed = Mathf.Min(c.playerWalk * 1.15f, c.playerSprint * 0.85f) * speedFactor;
         mob.touchDistance = body.radius + 0.28f * c.scale + 0.35f * c.scale;
         Debug.Log("ADVENTURE mob '" + id + "' at " + spot.ToString("F1") + " height " + targetHeight.ToString("F2") + " chase " + mob.chaseSpeed.ToString("F1"));
+        return mob;
     }
 
-    // Imports one of your character PNGs as a sprite the same size as the Musical Mage
-    // (120 pixels per unit, feet at the bottom). Pixel art keeps hard pixels (Point filter).
     static Sprite LoadCharacterSprite(string fileName, bool pixelArt)
     {
         string path = "Assets/Sprites/Characters/" + fileName + ".png";
@@ -286,7 +270,6 @@ public static class AdventureSetup
         return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
 
-    // A front-facing frame of your friend's Musical Mage, tinted per NPC.
     static Sprite FindNpcSprite()
     {
         foreach (string path in new[] { "Assets/Sprites/MusicalMage/Walk_S_00.png", "Assets/Sprites/MusicalMage/Sprint_S_00.png" })
@@ -317,14 +300,11 @@ public static class AdventureSetup
         return bounds;
     }
 
-    // The rough spot. When the game runs, GroundFinder moves each mob and NPC onto the nearest walkable
-    // ground (physics queries don't work reliably here in the editor, so the check happens in play).
     static Vector3 FindSpot(Context c, Vector2 wanted, float radius, float height)
     {
         return new Vector3(wanted.x, c.groundY, wanted.y);
     }
 
-    // Unused editor-time version, kept for reference.
     static Vector3 FindSpotInEditor(Context c, Vector2 wanted, float radius, float height)
     {
         for (int ring = 0; ring <= 8; ring++)

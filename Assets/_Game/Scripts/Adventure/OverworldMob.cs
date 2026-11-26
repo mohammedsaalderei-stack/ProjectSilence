@@ -1,13 +1,5 @@
 using UnityEngine;
 
-// =====================================================================================
-// OverworldMob.cs - written with AI help (Claude, 25 Nov 2026). List it in READ THIS DOCTOR.txt.
-//
-// An enemy on the map (the proposal's core loop: perceive -> attack or avoid -> escape or engage).
-// It wanders near its home, notices the player when they come close (a red "!"), chases them,
-// and starts a battle when it touches them. Outrun it and it gives up. Defeated mobs stay gone.
-// The first child is its model; it bobs while walking.
-// =====================================================================================
 [RequireComponent(typeof(CharacterController))]
 public class OverworldMob : MonoBehaviour
 {
@@ -19,6 +11,13 @@ public class OverworldMob : MonoBehaviour
     [Tooltip("Above 1 makes the enemies tougher (the boss uses this).")]
     public float enemyBoost = 1f;
     public bool isBoss;
+    [Tooltip("The final boss: beating it shows the ending.")]
+    public bool isFinalBoss;
+    [Tooltip("Only appears once this other mob is defeated (empty = always there).")]
+    public string appearsAfterMob;
+    [Tooltip("Lines this mob says when it notices you, before the battle (empty = it just attacks).")]
+    [TextArea(2, 4)] public string[] introLines;
+    bool hasSpoken;
 
     [Header("Movement (metres and metres per second)")]
     public float wanderRadius = 3f;
@@ -47,14 +46,14 @@ public class OverworldMob : MonoBehaviour
 
     void Start()
     {
-        if (GameFlow.DefeatedMobs.Contains(mobId))
+        if (GameFlow.DefeatedMobs.Contains(mobId)
+            || (!string.IsNullOrEmpty(appearsAfterMob) && !GameFlow.DefeatedMobs.Contains(appearsAfterMob)))
         {
             gameObject.SetActive(false);
             return;
         }
         body = GetComponent<CharacterController>();
 
-        // Stand on real ground near where the mob was placed (switched off if there is none nearby).
         body.enabled = false;
         if (GroundFinder.Find(transform.position, Mathf.Max(6f, wanderRadius * 4f), body.radius, body.height, out Vector3 ground))
         {
@@ -67,8 +66,10 @@ public class OverworldMob : MonoBehaviour
             gameObject.SetActive(false);
             return;
         }
+        body.minMoveDistance = 0f;
         home = transform.position;
         wanderTarget = home;
+        lastPosition = home;
         MusicalMagePlayer found = FindAnyObjectByType<MusicalMagePlayer>();
         if (found != null) player = found.transform;
         if (transform.childCount > 0)
@@ -89,11 +90,19 @@ public class OverworldMob : MonoBehaviour
         float distance = toPlayer.magnitude;
         bool safe = Time.time < GameFlow.SafeUntil;
 
-        // Notice the player, or give up the chase.
+        if (!hasSpoken && introLines != null && introLines.Length > 0 && !safe && distance < noticeRadius
+            && AdventureDirector.Instance != null)
+        {
+            hasSpoken = true;
+            Vector3 where = player.position;
+            AdventureDirector.Instance.NarrateThen(displayName, introLines, () => GameFlow.StartBattle(this, where));
+            return;
+        }
+
         if (!chasing && !safe && distance < noticeRadius)
         {
             chasing = true;
-            GameAudio.Play(ProjectSilence.Synth.Danger, 0.55f);       // it noticed you
+            GameAudio.Play(GameSounds.Slots.enemyNotices);
             if (isBoss && AdventureDirector.Instance != null)
                 AdventureDirector.Instance.Toast("The Hollow Colossus turns toward you. The forest falls silent...");
         }
@@ -124,29 +133,37 @@ public class OverworldMob : MonoBehaviour
         bool moving = move.magnitude > 0.25f;
         Vector3 direction = moving ? move.normalized : Vector3.zero;
 
-        // Stuck on a bench, a planter or a wall? Walk around it for a moment.
         if (moving)
         {
-            Vector3 stepped = transform.position - lastPosition;
-            stepped.y = 0f;
-            if (stepped.magnitude < lastSpeed * Time.deltaTime * 0.3f) stuckTime += Time.deltaTime;
-            else stuckTime = 0f;
-            if (stuckTime > 0.35f)
+            stuckTime += Time.deltaTime;
+            lastSpeed += speed * Time.deltaTime;
+            if (stuckTime >= 0.3f)
             {
+                Vector3 walked = transform.position - lastPosition;
+                walked.y = 0f;
+                if (Time.time >= detourUntil && walked.magnitude < lastSpeed * 0.3f)
+                {
+                    detourDirection = Quaternion.Euler(0f, Random.value < 0.5f ? 75f : -75f, 0f) * direction;
+                    detourUntil = Time.time + 0.8f;
+                    if (!chasing) nextWanderTime = 0f;
+                }
                 stuckTime = 0f;
-                detourDirection = Quaternion.Euler(0f, Random.value < 0.5f ? 75f : -75f, 0f) * direction;
-                detourUntil = Time.time + 0.8f;
-                if (!chasing) nextWanderTime = 0f;     // a wandering mob just picks somewhere else to go
+                lastSpeed = 0f;
+                lastPosition = transform.position;
             }
             if (Time.time < detourUntil) direction = detourDirection;
         }
-        lastPosition = transform.position;
-        lastSpeed = moving ? speed : 0f;
+        else
+        {
+            stuckTime = 0f;
+            lastSpeed = 0f;
+            lastPosition = transform.position;
+        }
         if (moving) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime * 8f);
 
         verticalSpeed = body.isGrounded ? -2f : verticalSpeed - 20f * Time.deltaTime;
         body.Move((direction * speed + Vector3.up * verticalSpeed) * Time.deltaTime);
-        if (transform.position.y < home.y - 6f)   // walked off the walkable area: go back home
+        if (transform.position.y < home.y - 6f)
         {
             body.enabled = false;
             transform.position = home;
@@ -155,17 +172,14 @@ public class OverworldMob : MonoBehaviour
             chasing = false;
         }
 
-        // Bob the model while walking, so even models without a walk animation look alive.
         if (model != null)
             model.localPosition = modelRest + Vector3.up * (moving ? Mathf.Abs(Mathf.Sin(Time.time * (4f + speed * 2f))) * 0.12f : 0f);
 
-        // Caught! Start the battle.
         if (!safe && distance < touchDistance) GameFlow.StartBattle(this, player.position);
     }
 
     void LateUpdate()
     {
-        // Keep the "!" (and a sprite body) facing the camera.
         if (Camera.main == null) return;
         if (alert != null) alert.transform.rotation = Camera.main.transform.rotation;
         if (model != null && model.GetComponent<SpriteRenderer>() != null) model.rotation = Camera.main.transform.rotation;

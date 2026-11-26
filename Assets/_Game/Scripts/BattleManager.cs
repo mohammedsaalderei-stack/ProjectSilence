@@ -12,7 +12,7 @@ public class BattleManager : MonoBehaviour
     public BattleMusic music;
     public int healCost = 8;
     public int healAmount = 40;
-    public int magicCost = 6;   // Added with AI help: MP needed for one spell
+    public int magicCost = 6;
     public string returnScene;
 
     List<Unit> enemies;
@@ -24,19 +24,19 @@ public class BattleManager : MonoBehaviour
     void Start()
     {
         foreach (GameObject group in enemyGroups) group.SetActive(false);
-        // Changed with AI help: the overworld mob that caught you decides which enemy group appears.
         int groupIndex = GameFlow.InBattleFromMap && GameFlow.PendingEnemyGroup >= 0 && GameFlow.PendingEnemyGroup < enemyGroups.Length
             ? GameFlow.PendingEnemyGroup
             : Random.Range(0, enemyGroups.Length);
         GameObject chosenGroup = enemyGroups[groupIndex];
         chosenGroup.SetActive(true);
         enemies = chosenGroup.GetComponentsInChildren<Unit>().ToList();
-        GameFlow.ApplyToBattle(party, enemies);   // AI help: HP/MP carry over between battles; the boss gets stronger
+        GameFlow.ApplyToBattle(party, enemies);
+        if (GameFlow.InBattleFromMap && GameFlow.PendingIsFinal) DarkenForFinale();
 
         hud.ShowActions(false, false);
         hud.ShowTiming(false);
         hud.ShowResult(false, "");
-        if (hud.magicButton != null) hud.magicButton.onClick.AddListener(OnMagicButton);   // AI help: wire the Magic button
+        if (hud.magicButton != null) hud.magicButton.onClick.AddListener(OnMagicButton);
         StartCoroutine(BattleLoop());
     }
 
@@ -54,10 +54,10 @@ public class BattleManager : MonoBehaviour
 
     IEnumerator BattleLoop()
     {
-        // Added with AI help: announce who you are fighting.
-        hud.SetMessage(GameFlow.InBattleFromMap && GameFlow.PendingIsBoss
-            ? "The Hollow Colossus rises. Every sound around you dies..."
-            : GameFlow.InBattleFromMap ? "A " + GameFlow.PendingMobName + " attacks!" : "Enemies appear!");
+        hud.SetMessage(!GameFlow.InBattleFromMap ? "Enemies appear!"
+            : GameFlow.PendingIsFinal ? "Archcantor Vale raises his staff. The Silence closes in!"
+            : GameFlow.PendingIsBoss ? "The Hollow Colossus rises. Every sound around you dies..."
+            : "A " + GameFlow.PendingMobName + " attacks!");
         yield return new WaitForSeconds(1.3f);
 
         while (true)
@@ -79,16 +79,16 @@ public class BattleManager : MonoBehaviour
                 hud.UpdateStatus(party, enemies);
                 if (enemies.All(e => e.IsDead))
                 {
-                    GameFlow.SaveParty(party, true);    // AI help: remember HP/MP for the map
-                    GameAudio.Play(ProjectSilence.Synth.Victory);
+                    GameFlow.SaveParty(party, true);
+                    PlayResultPiece(true);
                     activeHero = null;
                     hud.ShowResult(true, "Victory!");
                     yield break;
                 }
                 if (party.All(p => p.IsDead))
                 {
-                    GameFlow.SaveParty(party, false);   // AI help
-                    GameAudio.Play(ProjectSilence.Synth.Defeat);
+                    GameFlow.SaveParty(party, false);
+                    PlayResultPiece(false);
                     activeHero = null;
                     hud.ShowResult(true, "Defeat...");
                     yield break;
@@ -100,40 +100,45 @@ public class BattleManager : MonoBehaviour
 
     IEnumerator PlayerTurn(Unit unit)
     {
-        // Changed with AI help: choose an action, then (for Attack and Magic) a target.
-        // B / Esc / right-click while choosing a target goes back to the actions.
-        activeHero = unit;                                     // a blue crystal floats over whoever's turn it is
+        activeHero = unit;
         while (true)
         {
-            hud.SetMessage(unit.unitName + "'s turn. Choose an action.");
             chosenAction = null;
-            hud.ShowActions(true, unit.currentMP >= healCost, unit.currentMP >= magicCost);   // AI help: Magic needs MP too
-            while (chosenAction == null) yield return null;
+            hud.ShowActions(true, unit.currentMP >= healCost, unit.currentMP >= magicCost);
+            while (chosenAction == null)
+            {
+                hud.SetMessage(unit.unitName + "'s turn. Choose an action." + (GamepadSupport.UsingGamepad
+                    ? "     D-pad: choose    " + GamepadSupport.Confirm + ": OK"
+                    : "     (click a button)"));
+                yield return null;
+            }
             hud.ShowActions(false, false);
-            GameAudio.Play(ProjectSilence.Synth.UiConfirm, 0.6f);
+            GameAudio.Play(GameSounds.Slots.confirm);
 
-            if (chosenAction != "Attack" && chosenAction != "Magic") break;   // Guard and Heal need no target
+            if (chosenAction != "Attack" && chosenAction != "Magic") break;
             yield return ChooseTarget(chosenAction == "Magic" ? "cast at" : "attack");
-            if (chosenTarget != null) break;                                   // no target = cancelled: choose again
+            if (chosenTarget != null) break;
         }
         activeHero = null;
 
         if (chosenAction == "Attack")
         {
-            // Added with AI help: a physical attack runs up to the enemy first (see UnitMotion.cs).
-            hud.SetMessage(unit.unitName + " charges at " + chosenTarget.unitName + "!");
+            bool melee = unit.Motion.runToTarget;
+            hud.SetMessage(melee ? unit.unitName + " charges at " + chosenTarget.unitName + "!"
+                                 : unit.unitName + " takes aim at " + chosenTarget.unitName + "...");
             yield return unit.Motion.RunUpTo(chosenTarget.Motion);
 
             hud.SetMessage(BeatMessage("!"));
             yield return TimingPrompt();
 
             unit.PlayAttack();
-            yield return unit.Motion.LungeForward(chosenTarget.Motion);   // AI help: the hit lands at the end of the lunge
+            if (melee) yield return unit.Motion.LungeForward(chosenTarget.Motion);
+            else yield return SpellEffect.Arrow(unit, chosenTarget);
             int damage = chosenTarget.TakeDamage(Mathf.RoundToInt(CalculateDamage(unit, chosenTarget) * timingMultiplier));
             hud.SetMessage(unit.unitName + " hits " + chosenTarget.unitName + " for " + damage + "!");
-            yield return unit.Motion.LungeBack();                          // AI help
-            yield return new WaitForSeconds(0.35f);                        // AI help: let the hit sink in
-            yield return unit.Motion.ReturnHome();                         // AI help: hop back to the start spot
+            if (melee) yield return unit.Motion.LungeBack();
+            yield return new WaitForSeconds(0.35f);
+            yield return unit.Motion.ReturnHome();
         }
         else if (chosenAction == "Guard")
         {
@@ -150,16 +155,15 @@ public class BattleManager : MonoBehaviour
         }
         else if (chosenAction == "Magic")
         {
-            // Added with AI help: a spell is cast from where the hero stands (no run-up), costs MP,
-            // and ignores half of the enemy's defense (see CalculateMagicDamage).
             hud.SetMessage(BeatMessage(" to cast!"));
             yield return TimingPrompt();
 
             unit.currentMP -= magicCost;
-            unit.PlayCast();                                       // the cast_a_spell animation
-            yield return unit.Motion.CastRise();                   // float up a little
-            yield return SpellEffect.Fly(unit, chosenTarget);      // a glowing orb flies to the enemy
-            unit.Motion.CastSettle();                              // float back down
+            unit.PlayCast();
+            yield return unit.Motion.CastRise();
+            GameAudio.Play(GameSounds.Slots.spell);
+            yield return SpellEffect.Fly(unit, chosenTarget);
+            unit.Motion.CastSettle();
             int damage = chosenTarget.TakeDamage(Mathf.RoundToInt(CalculateMagicDamage(unit, chosenTarget) * timingMultiplier));
             hud.SetMessage(unit.unitName + "'s spell hits " + chosenTarget.unitName + " for " + damage + "!");
         }
@@ -167,23 +171,91 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(0.8f);
     }
 
+    void PlayResultPiece(bool won)
+    {
+        GameMusic songs = GameMusic.Get();
+        AudioClip piece = songs == null ? null : won ? songs.victory : songs.defeat;
+        if (piece == null) return;
+        music.Stop();
+        GameAudio.PlayOnce(piece);
+    }
+
+
+    void DarkenForFinale()
+    {
+        foreach (Light light in FindObjectsByType<Light>())
+            if (light.type == LightType.Directional) light.color = new Color(0.72f, 0.55f, 1f);
+        RenderSettings.ambientLight = new Color(0.32f, 0.22f, 0.45f);
+        RenderSettings.fogColor = new Color(0.2f, 0.1f, 0.3f);
+    }
+
+    readonly Dictionary<Unit, int> casterTurns = new Dictionary<Unit, int>();
+
+    IEnumerator CasterTurn(Unit caster)
+    {
+        casterTurns.TryGetValue(caster, out int turn);
+        turn++;
+        casterTurns[caster] = turn;
+        bool chord = caster.chordEvery > 0 && turn % caster.chordEvery == 0;
+        bool warnNext = caster.chordEvery > 0 && (turn + 1) % caster.chordEvery == 0;
+        List<Unit> alive = party.Where(p => !p.IsDead).ToList();
+
+        if (chord)
+        {
+            hud.SetMessage(caster.unitName + " plays the Perpetual Chord! Silence crashes over everyone!");
+            yield return new WaitForSeconds(0.4f);
+            caster.PlayCast();
+            yield return caster.Motion.CastRise();
+            GameAudio.Play(GameSounds.Slots.spell);
+            foreach (Unit hero in alive) StartCoroutine(SpellEffect.Fly(caster, hero, 0.6f));
+            yield return new WaitForSeconds(0.65f);
+            caster.Motion.CastSettle();
+            foreach (Unit hero in alive) hero.TakeDamage(Mathf.Max(1, caster.magic + 4 - hero.defense / 2));
+        }
+        else
+        {
+            Unit target = alive[Random.Range(0, alive.Count)];
+            hud.SetMessage(caster.unitName + " points his staff at " + target.unitName + "!");
+            yield return new WaitForSeconds(0.4f);
+            caster.PlayCast();
+            yield return caster.Motion.CastRise();
+            GameAudio.Play(GameSounds.Slots.spell);
+            yield return SpellEffect.Fly(caster, target);
+            caster.Motion.CastSettle();
+            int damage = target.TakeDamage(Mathf.Max(1, caster.magic * 2 - target.defense / 2));
+            hud.SetMessage(caster.unitName + "'s spell hits " + target.unitName + " for " + damage + "!");
+        }
+        yield return new WaitForSeconds(0.8f);
+        if (warnNext)
+        {
+            hud.SetMessage(caster.unitName + " raises his staff high... the Perpetual Chord is coming. Guard!");
+            GameAudio.Play(GameSounds.Slots.chordWarning);
+            yield return new WaitForSeconds(1.4f);
+        }
+    }
+
     IEnumerator EnemyTurn(Unit enemy)
     {
+        if (enemy.castsSpells)
+        {
+            yield return CasterTurn(enemy);
+            yield break;
+        }
         List<Unit> targets = party.Where(p => !p.IsDead).ToList();
         Unit target = targets[Random.Range(0, targets.Count)];
 
         hud.SetMessage(enemy.unitName + " attacks " + target.unitName + "!");
-        yield return new WaitForSeconds(0.3f);                             // AI help: was 0.6 (the run-up adds time)
-        yield return enemy.Motion.RunUpTo(target.Motion);                  // AI help: enemies run up to the hero too
+        yield return new WaitForSeconds(0.3f);
+        yield return enemy.Motion.RunUpTo(target.Motion);
 
         enemy.PlayAttack();
-        yield return enemy.Motion.LungeForward(target.Motion);             // AI help
+        yield return enemy.Motion.LungeForward(target.Motion);
         int damage = target.TakeDamage(CalculateDamage(enemy, target));
         hud.SetMessage(enemy.unitName + " hits " + target.unitName + " for " + damage + "!");
-        yield return enemy.Motion.LungeBack();                             // AI help
-        yield return new WaitForSeconds(0.35f);                            // AI help
-        yield return enemy.Motion.ReturnHome();                            // AI help
-        yield return new WaitForSeconds(0.3f);                             // AI help: was 0.8
+        yield return enemy.Motion.LungeBack();
+        yield return new WaitForSeconds(0.35f);
+        yield return enemy.Motion.ReturnHome();
+        yield return new WaitForSeconds(0.3f);
     }
 
     IEnumerator TimingPrompt()
@@ -195,7 +267,7 @@ public class BattleManager : MonoBehaviour
 
         hud.SetJudgment("");
         hud.ShowTiming(true);
-        yield return null;   // AI help: skip the frame of the press that picked the target (A is also the beat button)
+        yield return null;
 
         while (true)
         {
@@ -223,10 +295,7 @@ public class BattleManager : MonoBehaviour
         }
 
         hud.SetJudgment(result);
-        // Added with AI help: a bright bell for PERFECT, a tick for GOOD, a dull thud for MISS.
-        if (result == "PERFECT!") GameAudio.Play(ProjectSilence.Synth.Bell(1046.5f, 0.45f), 0.8f);
-        else if (result == "GOOD") GameAudio.Play(ProjectSilence.Synth.TickAccent, 0.8f);
-        else GameAudio.Play(ProjectSilence.Synth.Miss, 0.7f);
+        GameAudio.Play(result == "PERFECT!" ? GameSounds.Slots.perfect : result == "GOOD" ? GameSounds.Slots.good : GameSounds.Slots.miss);
         yield return new WaitForSeconds(0.5f);
         hud.ShowTiming(false);
     }
@@ -236,12 +305,9 @@ public class BattleManager : MonoBehaviour
         return Mathf.Max(1, attacker.attack * 2 - target.defense);
     }
 
-    // ---- Added with AI help: choosing a target with the mouse, the keyboard or a controller ----------
 
     GameObject targetMarker;
 
-    // Click an enemy, or use left/right (d-pad, stick, arrow keys) and A / Enter.
-    // B / Esc / right-click cancels (then chosenTarget stays null).
     IEnumerator ChooseTarget(string verb)
     {
         List<Unit> alive = enemies.Where(e => !e.IsDead)
@@ -250,7 +316,7 @@ public class BattleManager : MonoBehaviour
         float nextMove = 0f;
         chosenTarget = null;
         choosingTarget = true;
-        yield return null;                                   // ignore the press that picked the action
+        yield return null;
         while (chosenTarget == null)
         {
             Vector2 move = BattleInput.Navigate;
@@ -259,8 +325,8 @@ public class BattleManager : MonoBehaviour
                 if (Time.time >= nextMove)
                 {
                     index = (index + (move.x > 0f ? 1 : alive.Count - 1)) % alive.Count;
-                    nextMove = Time.time + 0.3f;           // holding the stick keeps moving, slowly
-                    GameAudio.Play(ProjectSilence.Synth.UiMove, 0.6f);
+                    nextMove = Time.time + 0.3f;
+                    GameAudio.Play(GameSounds.Slots.select);
                 }
             }
             else nextMove = 0f;
@@ -272,10 +338,10 @@ public class BattleManager : MonoBehaviour
             if (BattleInput.ConfirmPressed) chosenTarget = alive[index];
             else if (BattleInput.CancelPressed)
             {
-                GameAudio.Play(ProjectSilence.Synth.UiBack, 0.6f);
+                GameAudio.Play(GameSounds.Slots.back);
                 break;
             }
-            yield return null;                               // a mouse click sets chosenTarget in Update()
+            yield return null;
         }
         choosingTarget = false;
         if (targetMarker != null) targetMarker.SetActive(false);
@@ -286,7 +352,6 @@ public class BattleManager : MonoBehaviour
 
     void LateUpdate()
     {
-        // A small blue crystal above the hero whose turn it is.
         if (activeHero == null || activeHero.IsDead)
         {
             if (turnMarker != null) turnMarker.SetActive(false);
@@ -302,7 +367,7 @@ public class BattleManager : MonoBehaviour
     {
         GameObject crystal = GameObject.CreatePrimitive(PrimitiveType.Cube);
         crystal.name = name;
-        Destroy(crystal.GetComponent<Collider>());              // must not block mouse clicks
+        Destroy(crystal.GetComponent<Collider>());
         crystal.transform.localScale = Vector3.one * size;
         Renderer renderer = crystal.GetComponent<Renderer>();
         Shader unlit = Shader.Find("Sprites/Default");
@@ -311,7 +376,6 @@ public class BattleManager : MonoBehaviour
         return crystal;
     }
 
-    // A spinning gold crystal above the enemy you are pointing at.
     void ShowTargetMarker(Unit target)
     {
         if (targetMarker == null) targetMarker = MakeCrystal("Target Marker", new Color(1f, 0.82f, 0.25f), 0.3f);
@@ -325,7 +389,6 @@ public class BattleManager : MonoBehaviour
         return "Press " + (GamepadSupport.UsingGamepad ? GamepadSupport.Confirm : "SPACE") + " on the beat" + ending;
     }
 
-    // Added with AI help: magic ignores half of the target's defense, so it is good against armour (the golem).
     int CalculateMagicDamage(Unit caster, Unit target)
     {
         return Mathf.Max(1, caster.magic * 2 - target.defense / 2);
@@ -346,14 +409,13 @@ public class BattleManager : MonoBehaviour
         chosenAction = "Heal";
     }
 
-    public void OnMagicButton()   // Added with AI help
+    public void OnMagicButton()
     {
         chosenAction = "Magic";
     }
 
     public void OnContinueButton()
     {
-        // Added with AI help: a battle started from the map goes back to the map (GameFlow knows where).
         if (GameFlow.InBattleFromMap)
         {
             GameFlow.EndBattle();
