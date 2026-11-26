@@ -13,22 +13,22 @@ MonoBehaviour:
   m_Name: GameMusic
   m_EditorClassIdentifier: Assembly-CSharp::GameMusic
   mainMenu: {fileID: 8300000, guid: f69cd567db922634eb883eca3419607d, type: 3}
-  city: {fileID: 0}
+  city: {fileID: 8300000, guid: 647ded44035b03a489bf899ab5b9ffc6, type: 3}
   forest: {fileID: 0}
   battle:
     song: {fileID: 8300000, guid: c4a8797b6d0e99d40837acde23bd19c9, type: 3}
     beatsPerMinute: 78
     firstBeatAt: 0
   bossBattle:
-    song: {fileID: 0}
+    song: {fileID: 8300000, guid: 268ccb5e37561864eaccb177c44a6b16, type: 3}
     beatsPerMinute: 100
     firstBeatAt: 0
   finalBattle:
-    song: {fileID: 0}
+    song: {fileID: 8300000, guid: 010655019bf6e054ba67134e37b632b6, type: 3}
     beatsPerMinute: 100
     firstBeatAt: 0
-  victory: {fileID: 0}
-  defeat: {fileID: 0}
-  ending: {fileID: 0}
+  victory: {fileID: 8300000, guid: f2264d7a39ec3244f9ade1470d7098fb, type: 3}
+  defeat: {fileID: 8300000, guid: fade4af680e7a48438669ef68d7277a0, type: 3}
+  ending: {fileID: 8300000, guid: f2264d7a39ec3244f9ade1470d7098fb, type: 3}
   volume: 0.35
-  muffleForest: 0
+  muffleForest: 1

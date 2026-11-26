@@ -12,20 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56013fcfdc32da64f9117079802218f2, type: 3}
   m_Name: GameSounds
   m_EditorClassIdentifier: Assembly-CSharp::GameSounds
-  enemyNotices: {fileID: 0}
-  battleStart: {fileID: 0}
-  talk: {fileID: 0}
-  nextLine: {fileID: 0}
-  confirm: {fileID: 0}
-  back: {fileID: 0}
-  select: {fileID: 0}
-  perfect: {fileID: 0}
-  good: {fileID: 0}
-  miss: {fileID: 0}
-  hit: {fileID: 0}
-  block: {fileID: 0}
-  heal: {fileID: 0}
-  spell: {fileID: 0}
-  arrow: {fileID: 0}
-  chordWarning: {fileID: 0}
+  enemyNotices: {fileID: 8300000, guid: b1119ceff41c17648b9b7f620a0b34a5, type: 3}
+  battleStart: {fileID: 8300000, guid: 5bcac31334609bc429e5fc2129a85941, type: 3}
+  talk: {fileID: 8300000, guid: b48e86ac222e46f4ba1bee9543be3a59, type: 3}
+  nextLine: {fileID: 8300000, guid: 5bcac31334609bc429e5fc2129a85941, type: 3}
+  confirm: {fileID: 8300000, guid: 2070c2c7da939fc4eb9cc684868a3b33, type: 3}
+  back: {fileID: 8300000, guid: b94fe5683f07ef9449434f064d0c62a7, type: 3}
+  select: {fileID: 8300000, guid: a88c75a7382a2ca449eef3b10a23c850, type: 3}
+  perfect: {fileID: 8300000, guid: 125dd053516967a4da83a99d8c91ab40, type: 3}
+  good: {fileID: 8300000, guid: 81b1610d4bda00b4ba2104aa18ada074, type: 3}
+  miss: {fileID: 8300000, guid: 7c66b2fc5f165244e9382cbf3741d933, type: 3}
+  hit: {fileID: 8300000, guid: 6d22500a822a2b24ab6b19e593d8dfe6, type: 3}
+  block: {fileID: 8300000, guid: 5e5556e736959ed4184df4f2310c8e26, type: 3}
+  heal: {fileID: 8300000, guid: 9a82e80d05a12244a829c90725d16e53, type: 3}
+  spell: {fileID: 8300000, guid: 1398d584e0e9fe8438889d3bb0226948, type: 3}
+  arrow: {fileID: 8300000, guid: 3e88292ac56c59043a02b99a37bbcc1b, type: 3}
+  chordWarning: {fileID: 8300000, guid: 0fdb5bc099c72294780d0fb9922253e2, type: 3}
   volume: 0.8
